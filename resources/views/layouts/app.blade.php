@@ -151,7 +151,7 @@
                             <li><a class="dropdown-item" href="/customers">Customer</a></li>
                             <li><a class="dropdown-item" href="/orders">Orders</a></li>
                             <li><a class="dropdown-item" href="/sales">Sales</a></li>
-                            <li><a class="dropdown-item" href="/sales_returns">Sales Return</a></li>
+                            {{-- <li><a class="dropdown-item" href="/sales_returns">Sales Return</a></li> --}}
                         </ul>
                     </li>
                     <li class="nav-item dropdown">
@@ -164,12 +164,22 @@
                     </li>
                     <li class="nav-item dropdown">
                         <a class="nav-link dropdown-toggle" href="#" data-bs-toggle="dropdown">
-                            <i class="bi bi-map me-1"></i> Finance
+                            <i class="bi bi-graph-up"></i> Finance
+
                         </a>
                         <ul class="dropdown-menu border-0 shadow-sm">
-                            <li><a class="dropdown-item" href="/payments">Money Receipt</a></li>
+                            <li><a class="dropdown-item" href="/payments/create">Money Receipt</a></li>
                             <li><a class="dropdown-item" href="/purchase_payments/create">Payment Voucher</a></li>
                             <li><a class="dropdown-item" href="/expenses">Expenses</a></li>
+                        </ul>
+                    </li>
+                    <li class="nav-item dropdown">
+                        <a class="nav-link dropdown-toggle" href="#" data-bs-toggle="dropdown">
+                            <!-- Settings icon with text -->
+                            <i class="bi bi-gear me-1"></i> Settings
+                        </a>
+                        <ul class="dropdown-menu border-0 shadow-sm">
+                            <li><a class="dropdown-item" href="/employees">Employees</a></li>
                         </ul>
                     </li>
                     {{-- <li class="nav-item">

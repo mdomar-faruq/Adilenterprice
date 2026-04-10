@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\Customer;
 use App\Models\Payment;
 use App\Models\Sale;
+use App\Models\SalesDueCustomer;
 use App\Models\SalesReturn;
 use Illuminate\Http\Request;
 use Yajra\DataTables\Facades\DataTables;
@@ -152,31 +153,41 @@ class CustomerController extends Controller
     {
         $customer = Customer::findOrFail($id);
 
-        // 1. Get all Sales (Debits - Increases Balance)
-        $sales = Sale::where('customer_id', $id)
-            ->select('id', 'sale_date as date', 'invoice_no as reference', 'total_amount as debit', DB::raw('0 as credit'), DB::raw('"Sale" as type'))
-            ->get();
+        // 1. Get Invoices (Debits)
+        $invoices = SalesDueCustomer::where('customer_id', $id)
+            ->with('sale')
+            ->get()
+            ->map(function ($item) {
+                return (object)[
+                    'date'      => $item->created_at,
+                    'type'      => 'Invoice',
+                    'reference' => '#' . $item->sale->invoice_no,
+                    'debit'     => $item->due_amount,
+                    'credit'    => 0,
+                ];
+            });
 
-        // 2. Get all Payments (Credits - Decreases Balance)
+        // 2. Get Payments (Credits)
         $payments = Payment::where('customer_id', $id)
-            ->select('id', 'payment_date as date', DB::raw('NULL as reference'), DB::raw('0 as debit'), 'amount as credit', DB::raw('"Payment" as type'))
-            ->get();
+            ->get()
+            ->map(function ($item) {
+                return (object)[
+                    'date'      => $item->payment_date,
+                    'type'      => 'Payment',
+                    'reference' => $item->payment_method . ($item->transaction_no ? ' - ' . $item->transaction_no : ''),
+                    'debit'     => 0,
+                    'credit'    => $item->amount,
+                ];
+            });
 
-        // 3. NEW: Get all Sales Returns (Credits - Decreases Balance)
-        $returns = SalesReturn::where('customer_id', $id)
-            ->select('id', 'return_date as date', 'return_no as reference', DB::raw('0 as debit'), 'total_amount as credit', DB::raw('"Return" as type'))
-            ->get();
+        // 3. Merge, Sort, and Calculate Running Balance
+        $merged = $invoices->concat($payments)->sortBy('date');
 
-        // 4. Merge all, Sort by Date
-        $ledger = $sales->concat($payments)->concat($returns)->sortBy('date');
-
-        // 5. Calculate Running Balance
         $runningBalance = $customer->opening_balance;
-        $ledger->transform(function ($item) use (&$runningBalance) {
-            // Balance = Previous + (Sale) - (Payment/Return)
-            $runningBalance += ($item->debit - $item->credit);
-            $item->balance = $runningBalance;
-            return $item;
+        $ledger = $merged->map(function ($row) use (&$runningBalance) {
+            $runningBalance += ($row->debit - $row->credit);
+            $row->balance = $runningBalance;
+            return $row;
         });
 
         return view('customers.ledger', compact('customer', 'ledger'));

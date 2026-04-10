@@ -13,15 +13,16 @@ return new class extends Migration
     {
         Schema::create('payments', function (Blueprint $table) {
             $table->id();
-            $table->foreignId('sale_id')->nullable()->constrained()->onDelete('cascade');
-            $table->foreignId('sales_return_id')->nullable()->constrained()->onDelete('cascade');
-            $table->string('type')->default('payment'); // 'payment' or 'return',
             $table->foreignId('customer_id')->constrained();
+            $table->foreignId('sales_due_customer_id')
+                ->constrained('sales_due_customers')
+                ->onDelete('cascade');
             $table->decimal('amount', 15, 2);
             $table->date('payment_date');
-            $table->string('payment_method'); // Cash, Bank, Check
-            $table->string('note')->nullable();
-            $table->foreignId('user_id')->constrained(); // Who collected the money
+            $table->string('payment_method');
+            $table->string('transaction_no')->nullable();
+            $table->text('note')->nullable();
+            $table->foreignId('user_id')->constrained();
             $table->timestamps();
         });
     }

@@ -2,12 +2,12 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\Company;
 use App\Models\Product;
 use App\Models\Unit;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Yajra\DataTables\Facades\DataTables;
-use Illuminate\Support\Facades\Response;
 
 class ProductController extends Controller
 {
@@ -18,7 +18,7 @@ class ProductController extends Controller
     {
         if ($request->ajax()) {
             // Eager load 'unit' to avoid N+1 query issues
-            $data = Product::with('unit')->select('products.*');
+            $data = Product::with('unit', 'company')->select('products.*');
 
             return DataTables::of($data)
                 ->addIndexColumn()
@@ -73,9 +73,9 @@ class ProductController extends Controller
                 ->rawColumns(['unit', 'action'])
                 ->make(true);
         }
-
+        $companies = Company::all();
         $units = Unit::where('valid', 1)->get();
-        return view('products.index', compact('units'));
+        return view('products.index', compact('units', 'companies'));
     }
 
     /**
@@ -86,6 +86,7 @@ class ProductController extends Controller
         $validated = $request->validate([
             'name' => 'required|string|max:255',
             'unit_id' => 'required|exists:units,id',
+            'company_id' => 'required|exists:companies,id',
             'purchase_price' => 'required|numeric|min:0',
             'percent' => 'required|numeric|min:0',
             'sale_price'     => 'required|numeric|min:0',
@@ -112,24 +113,32 @@ class ProductController extends Controller
     {
         $validated = $request->validate([
             'name' => 'required|string|max:255',
+            'company_id' => 'required|exists:companies,id',
             'unit_id' => 'required|exists:units,id',
             'purchase_price' => 'required|numeric|min:0',
+            'opening_stock' => 'required|numeric|min:0',
             'percent' => 'required|numeric|min:0',
-            'sale_price'     => 'required|numeric|min:0',
+            'sale_price' => 'required|numeric|min:0',
         ]);
 
         // --- Cleaning Logic ---
-        // 1. trim() removes spaces from the very start and end
-        // 2. preg_replace removes double/triple spaces inside the name
-        // 3. ucwords() makes it "Look Professional" by capitalizing each word
         $cleanName = preg_replace('/\s+/', ' ', trim($request->name));
         $validated['name'] = ucwords(strtolower($cleanName));
-
         $validated['user_id'] = Auth::id();
+
+        // --- Stock Correction Logic ---
+        // Calculate the difference: (New Opening - Old Opening)
+        // If I had 10 opening, and I change it to 15, I added 5 units to the system.
+        $stockDifference = $request->opening_stock - $product->opening_stock;
+
+        // Update the current stock balance by that difference
+        $validated['stock'] = $product->stock + $stockDifference;
+
+        // Update the record
         $product->update($validated);
 
         return redirect()->route('products.index')
-            ->with('success', 'Product updated successfully.');
+            ->with('success', 'Product details and stock balance updated successfully.');
     }
 
     /**

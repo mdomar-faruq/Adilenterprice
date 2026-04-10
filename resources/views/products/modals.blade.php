@@ -14,17 +14,28 @@
             </div>
 
             <div class="modal-body p-4">
-                <div class="mb-3">
+                <div class="mb-4">
+                    <label class="form-label small fw-bold text-muted text-uppercase">Company</label>
+                    <select name="company_id" class="form-control select2-basic" required>
+                        <option value="">Select Company</option>
+                        @foreach ($companies as $company)
+                            <option value="{{ $company->id }}">{{ $company->name }}</option>
+                        @endforeach
+                    </select>
+                </div>
+                <div class="mb-4">
                     <label class="form-label small fw-semibold text-muted text-uppercase">Product Name</label>
                     <input type="text" name="name" class="form-control border-secondary-subtle"
                         placeholder="Enter product name" required>
                 </div>
-                <div class="mb-3">
+                <div class="mb-4">
                     <label class="form-label small fw-bold text-muted text-uppercase">Unit</label>
                     <select name="unit_id" class="form-select border-secondary-subtle" required>
                         <option value="">Select Unit</option>
                         @foreach ($units as $unit)
-                            <option value="{{ $unit->id }}">{{ $unit->name }}</option>
+                            <option value="{{ $unit->id }}" {{ $unit->id == 1 ? 'selected' : '' }}>
+                                {{ $unit->name }}
+                            </option>
                         @endforeach
                     </select>
                 </div>
@@ -77,11 +88,20 @@
             </div>
             <div class="modal-body p-4">
                 <div class="mb-4">
+                    <label class="form-label small fw-bold text-muted text-uppercase">Company</label>
+                    <select name="company_id" id="edit_company_id" class="form-control select2-basic" required>
+                        <option value="">Select Company</option>
+                        @foreach ($companies as $company)
+                            <option value="{{ $company->id }}">{{ $company->name }}</option>
+                        @endforeach
+                    </select>
+                </div>
+                <div class="mb-4">
                     <label class="form-label small fw-semibold text-muted text-uppercase">Product Name</label>
                     <input type="text" name="name" id="edit_name" class="form-control border-secondary-subtle"
                         required>
                 </div>
-                <div class="mb-3">
+                <div class="mb-4">
                     <label class="form-label small fw-bold text-muted text-uppercase">Unit</label>
                     <select name="unit_id" id="edit_unit_id" class="form-select border-secondary-subtle" required>
                         <option value="">Select Unit</option>
@@ -90,6 +110,21 @@
                         @endforeach
                     </select>
                 </div>
+
+                <div class="mb-4">
+                    <label class="form-label small fw-bold text-primary text-uppercase">Opening Stock (Initial)</label>
+                    <div class="input-group">
+                        <span class="input-group-text bg-primary-subtle border-secondary-subtle"><i
+                                class="bi bi-box-seam"></i></span>
+                        <input type="number" step="0.01" name="opening_stock" id="edit_opening_stock"
+                            class="form-control border-secondary-subtle fw-bold" required>
+                    </div>
+                    <div class="form-text text-danger small">
+                        <i class="bi bi-exclamation-triangle-fill me-1"></i>
+                        Changing this will update the current available stock.
+                    </div>
+                </div>
+
                 <div class="row g-3">
                     <div class="col-md-4">
                         <label class="form-label small fw-semibold text-muted text-uppercase">Purchase</label>

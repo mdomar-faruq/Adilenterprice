@@ -11,16 +11,22 @@ class Product extends Model
     protected $table = 'products';
     protected $fillable = [
         'name',
-        'unit_id',
         'purchase_price',
         'percent',
         'sale_price',
+        'opening_stock',
         'stock',
+        'company_id',
+        'unit_id',
         'user_id',
     ];
 
     public function unit()
     {
         return $this->belongsTo(Unit::class);
+    }
+    public function company()
+    {
+        return $this->belongsTo(Company::class);
     }
 }

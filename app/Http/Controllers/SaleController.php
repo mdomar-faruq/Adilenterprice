@@ -6,11 +6,13 @@ use App\Models\Sale;
 use App\Models\SaleItem;
 use App\Models\Product;
 use App\Models\Customer;
+use App\Models\Employee;
 use App\Models\Payment;
 use App\Services\StockService;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Str;
 use Yajra\DataTables\Facades\DataTables;
 
 class SaleController extends Controller
@@ -21,53 +23,74 @@ class SaleController extends Controller
     public function index(Request $request)
     {
         if ($request->ajax()) {
-            $data = Sale::with('customer')->select('sales.*');
+            $data = Sale::with(['sr', 'delivery', 'customerDues'])->select('sales.*');
 
             return DataTables::of($data)
                 ->addIndexColumn()
-                ->addColumn('customer_name', function ($row) {
-                    return $row->customer->name ?? 'N/A';
-                })
-                ->editColumn('sale_date', function ($row) {
-                    return date('d M, Y', strtotime($row->sale_date));
-                })
+                ->addColumn('sr_name', fn($row) => $row->sr->name ?? 'N/A')
+                ->addColumn('delivery_name', fn($row) => $row->delivery->name ?? 'N/A')
+                ->editColumn('route_no', fn($row) => $row->route_no ?? 'N/A')
+                ->editColumn('sale_date', fn($row) => date('d M, Y', strtotime($row->sale_date)))
                 ->editColumn('total_amount', fn($row) => number_format($row->total_amount, 2))
                 ->editColumn('paid_amount', fn($row) => number_format($row->paid_amount, 2))
-                ->editColumn('due_amount', function ($row) {
-                    $class = $row->due_amount > 0 ? 'text-danger' : 'text-success';
-                    return '<span class="' . $class . ' fw-bold">' . number_format($row->due_amount, 2) . '</span>';
-                })
-                ->addColumn('action', function ($row) {
-                    // Determine if we should show the Pay Button
 
+                // This is the total due of the Invoice
+                ->editColumn('due_amount', fn($row) => number_format($row->due_amount, 2))
+
+                ->addColumn('action', function ($row) {
+                    // Calculate how much is left to assign to customers
+                    $alreadyAssigned = $row->customerDues->sum('due_amount');
+                    $remainingToAssign = $row->due_amount - $alreadyAssigned;
 
                     return '
                 <div class="btn-group shadow-sm">
-                    <a href="' . route('sales.show', $row->id) . '" class="btn btn-sm btn-outline-info" title="View Invoice">
+                    <button type="button" class="btn btn-sm btn-outline-success add-due-btn" 
+                        data-id="' . $row->id . '" 
+                        data-invoice="' . $row->invoice_no . '" 
+                        data-due="' . $remainingToAssign . '" 
+                        title="Add Customer Due">
+                        <i class="bi bi-person-plus-fill"></i>
+                    </button>
+                    <a href="' . route('sales.show', $row->id) . '" class="btn btn-sm btn-outline-info">
                         <i class="bi bi-eye"></i>
                     </a>
-                    <a href="' . route('sales.edit', $row->id) . '" class="btn btn-sm btn-outline-primary" title="Edit Sale">
+                    <a href="' . route('sales.edit', $row->id) . '" class="btn btn-sm btn-outline-primary">
                         <i class="bi bi-pencil"></i>
                     </a>
-                    <button type="button" class="btn btn-sm btn-outline-danger delete-btn" data-id="' . $row->id . '" title="Delete">
+                    <button type="button" class="btn btn-sm btn-outline-danger delete-btn" data-id="' . $row->id . '">
                         <i class="bi bi-trash"></i>
                     </button>
                 </div>';
                 })
-                ->rawColumns(['action', 'due_amount'])
+                ->addColumn('due_details', function ($row) {
+                    $count = $row->customerDues->count();
+                    $total = number_format($row->customerDues->sum('due_amount'), 2);
+                    $colorClass = ($row->due_amount > $row->customerDues->sum('due_amount')) ? 'text-danger' : 'text-success';
+
+                    return "<small class='text-muted'>$count Customers Assigned</small><br>
+                        <span class='{$colorClass}'>Assigned: $total</span>";
+                })
+                ->rawColumns(['action', 'due_amount', 'due_details'])
                 ->make(true);
         }
 
-        return view('sales.index');
+        $customers = Customer::orderBy('name')->get();
+        return view('sales.index', compact('customers'));
     }
     /**
      * Show the form for creating a new resource.
      */
     public function create()
     {
-        $customers = Customer::all();
-        $products = Product::all();
-        return view('sales.create', compact('customers', 'products'));
+        // 1. Fetch Employees instead of Customers
+        // You can filter by role if your table has it: Employee::where('role', 'SR')->get()
+        $employees = \App\Models\Employee::all();
+
+        // 2. Fetch Products
+        $products = \App\Models\Product::where('stock', '>', 0)->get();
+
+        // 3. Pass to view (Variable name 'employees' matches the @foreach in the Blade fix provided earlier)
+        return view('sales.create', compact('employees', 'products'));
     }
 
     /**
@@ -76,9 +99,10 @@ class SaleController extends Controller
 
     public function store(Request $request)
     {
-        // 1. Validation
         $request->validate([
-            'customer_id'  => 'required|exists:customers,id',
+            'delivery_id'  => 'required|exists:employees,id',
+            'sr_id'        => 'required|exists:employees,id',
+            'route_no'     => 'required|string',
             'sale_date'    => 'required|date',
             'product_id'   => 'required|array|min:1',
             'qty'          => 'required|array',
@@ -90,23 +114,21 @@ class SaleController extends Controller
         try {
             $sale = DB::transaction(function () use ($request) {
 
-                // --- NEW: FETCH CUSTOMER AND LOCK FOR CREDIT CHECK ---
-                $customer = \App\Models\Customer::lockForUpdate()->findOrFail($request->customer_id);
-
                 $calculatedSubtotal = 0;
                 $itemsToProcess = [];
 
-                // 2. Initial Loop: Validate Stock
+                // 2. Initial Loop: Validate Stock & Fetch Products
                 foreach ($request->product_id as $key => $p_id) {
                     $qty = (float) $request->qty[$key];
                     $unitPrice = (float) $request->price[$key];
                     $lineTotal = $qty * $unitPrice;
                     $calculatedSubtotal += $lineTotal;
 
+                    // Lock product row to prevent race conditions on stock
                     $product = \App\Models\Product::lockForUpdate()->findOrFail($p_id);
 
                     if ($product->stock < $qty) {
-                        throw new \Exception("Stock insufficient for: {$product->name}");
+                        throw new \Exception("Stock insufficient for: {$product->name} (Available: {$product->stock})");
                     }
 
                     $itemsToProcess[] = [
@@ -118,33 +140,33 @@ class SaleController extends Controller
                 }
 
                 // 3. Financial Calculations
-                $discount   = (float) ($request->discount ?? 0);
+                $discount    = (float) ($request->discount ?? 0);
                 $totalAmount = round($calculatedSubtotal - $discount, 2);
-                $paidAmount  = 0;
-                $dueAmount  = $totalAmount;
+                $paidAmount  = $request->paid_amount ?? 0;
+                $dueAmount   = $totalAmount - $paidAmount;
 
-
-                // 4. Payment Status
-                $paymentStatus = 'pending';
-
-                // 5. Create the Master Sale
+                // 4. Create the Master Sale (Removed customer_id, Added Delivery/SR/Route)
                 $sale = Sale::create([
-                    'invoice_no'     => 'INV-' . time() . mt_rand(100, 999),
-                    'customer_id'    => $customer->id,
+                    'invoice_no'     => 'INV-' . strtoupper(Str::random(4)) . time(),
+                    'delivery_id'    => $request->delivery_id,
+                    'sr_id'          => $request->sr_id,
+                    'route_no'       => $request->route_no,
                     'sale_date'      => $request->sale_date,
                     'total_amount'   => $totalAmount,
                     'discount'       => $discount,
                     'paid_amount'    => $paidAmount,
                     'due_amount'     => $dueAmount,
-                    'payment_status' => $paymentStatus,
+                    'payment_status' => 'pending',
                     'remarks'        => $request->remarks,
                     'user_id'        => Auth::id(),
                 ]);
 
-                // 6. Process Items and Stock Movements
+                // 5. Process Items and Stock Movements via Service
                 foreach ($itemsToProcess as $item) {
+                    // Save SaleItem
                     $sale->items()->create($item);
 
+                    // Update Stock using Service
                     \App\Services\StockService::updateStock(
                         $item['product_id'],
                         $item['quantity'],
@@ -164,14 +186,58 @@ class SaleController extends Controller
         }
     }
 
+    //add sales due customer amount
+    public function storeDueCustomer(Request $request)
+    {
+        $request->validate([
+            'sale_id' => 'required|exists:sales,id',
+            'customer_id' => 'required|array',
+            'due_amount' => 'required|array',
+            'due_amount.*' => 'numeric|min:0.01',
+        ]);
+
+        $sale = Sale::findOrFail($request->sale_id);
+        $totalAssignedRequest = array_sum($request->due_amount);
+
+        // 1. Check if the assigned amount exceeds what the sale actually owes
+        if ($totalAssignedRequest > $sale->due_amount) {
+            return response()->json([
+                'error' => 'The total assigned customer dues (' . $totalAssignedRequest . ') exceeds the sale due amount (' . $sale->due_amount . ').'
+            ], 422);
+        }
+
+        // 2. Clear existing dues if you want to overwrite, or simply append
+        // $sale->customerDues()->delete(); 
+
+        foreach ($request->customer_id as $key => $c_id) {
+            if (!empty($c_id) && $request->due_amount[$key] > 0) {
+                \App\Models\SalesDueCustomer::create([
+                    'sale_id'     => $request->sale_id,
+                    'customer_id' => $c_id,
+                    'due_amount'  => $request->due_amount[$key],
+                    'note'        => $request->note[$key] ?? null,
+                ]);
+            }
+        }
+
+        return response()->json(['success' => 'Dues assigned successfully.']);
+    }
+
 
     /**
      * Display the specified resource.
      */
     public function show($id)
     {
-        // Eager load everything to prevent "N+1" issues on the invoice
-        $sale = Sale::with(['customer', 'user', 'items.product'])->findOrFail($id);
+        // Note: 'customer' is removed because it's no longer a direct relation on Sale.
+        // We load 'customerDues.customer' instead.
+        $sale = Sale::with([
+            'sr',
+            'delivery',
+            'user',
+            'items.product',
+            'customerDues.customer'
+        ])->findOrFail($id);
 
         return view('sales.show', compact('sale'));
     }
@@ -181,11 +247,12 @@ class SaleController extends Controller
      */
     public function edit($id)
     {
-        $sale = Sale::with('items')->findOrFail($id);
+        $sale = Sale::with(['items.product', 'customerDues.customer'])->findOrFail($id);
+        $employees = Employee::orderBy('name')->get();
         $customers = Customer::orderBy('name')->get();
         $products = Product::orderBy('name')->get();
 
-        return view('sales.edit', compact('sale', 'customers', 'products'));
+        return view('sales.edit', compact('sale', 'employees', 'customers', 'products'));
     }
 
     /**
@@ -193,108 +260,84 @@ class SaleController extends Controller
      */
     public function update(Request $request, $id)
     {
-        $sale = Sale::with(['items', 'payments'])->findOrFail($id);
-
-        $request->validate([
-            'customer_id'  => 'required|exists:customers,id',
-            'sale_date'    => 'required|date',
-            'product_id'   => 'required|array|min:1',
-            'qty'          => 'required|array',
-            'qty.*'        => 'required|numeric|min:1',
-            'price'        => 'required|array',
-            'discount'     => 'nullable|numeric|min:0',
-        ]);
+        $sale = Sale::with('items')->findOrFail($id);
 
         try {
             DB::transaction(function () use ($request, $sale) {
-
-                // --- STEP A: REVERSE OLD STOCK ---
-                foreach ($sale->items as $oldItem) {
+                // 1. Reverse ALL old stock movements first
+                foreach ($sale->items as $item) {
                     \App\Services\StockService::reverseStock(
-                        $oldItem->product_id,
-                        $oldItem->quantity,
-                        'sale',
+                        $item->product_id,
+                        $item->quantity,
+                        'sale_edit_reverse',
                         $sale->invoice_no
                     );
                 }
 
-                // --- STEP B: PREPARE NEW TOTALS & VALIDATE STOCK ---
-                $calculatedSubtotal = 0;
-                $newItemsData = [];
-
-                foreach ($request->product_id as $key => $p_id) {
-                    $qty = (float) $request->qty[$key];
-                    $unitPrice = (float) $request->price[$key];
-                    $lineTotal = $qty * $unitPrice;
-                    $calculatedSubtotal += $lineTotal;
-
-                    $product = Product::lockForUpdate()->findOrFail($p_id);
-                    if ($product->stock < $qty) {
-                        throw new \Exception("Stock insufficient for: {$product->name}.");
-                    }
-
-                    $newItemsData[] = [
-                        'product_id' => $p_id,
-                        'quantity'   => $qty,
-                        'unit_price' => $unitPrice,
-                        'subtotal'   => $lineTotal,
-                    ];
-                }
-
-                // --- STEP C: FINANCIAL RECONCILIATION ---
-                $discount = (float) ($request->discount ?? 0);
-                $totalAmount = round($calculatedSubtotal - $discount, 2);
-
-                //paid amount 
-                $historyPaid = $sale->paid_amount;
-
-                // If the user entered a NEW paid_amount in the edit form, 
-                // you must decide if that replaces history or adds to it.
-                // Usually, in "Edit", we keep the history.
-                $finalPaid = round($historyPaid, 2);
-
-                // Logic: If total bill decreased below what was already paid
-                if ($finalPaid >= $totalAmount) {
-                    // You might want to throw an error or handle as credit
-                    // For now, we cap it so due_amount isn't negative
-                    $dueAmount = 0;
-                } else {
-                    $dueAmount = round($totalAmount - $finalPaid, 2);
-                }
-
-                $paymentStatus = ($dueAmount <= 0) ? 'paid' : (($finalPaid > 0) ? 'partial' : 'pending');
-
-                // --- STEP D: REFRESH SALE RECORD ---
+                // 2. Remove old Items and old Customer Dues
                 $sale->items()->delete();
+                $sale->customerDues()->delete();
 
+                // 3. Calculate Financials
+                $totalAmount = 0;
+                if ($request->has('items')) {
+                    foreach ($request->items as $item) {
+                        $totalAmount += ($item['unit_price'] * $item['quantity']);
+                    }
+                }
+                $grandTotal = $totalAmount - ($request->discount ?? 0);
+
+                // 4. Update Main Sale Record
                 $sale->update([
-                    'customer_id'    => $request->customer_id,
                     'sale_date'      => $request->sale_date,
-                    'total_amount'   => $totalAmount,
-                    'discount'       => $discount,
-                    'paid_amount'    => $finalPaid,
-                    'due_amount'     => $dueAmount,
-                    'payment_status' => $paymentStatus,
+                    'sr_id'          => $request->sr_id,
+                    'delivery_id'    => $request->delivery_id,
+                    'route_no'       => $request->route_no,
+                    'total_amount'   => $grandTotal,
+                    'discount'       => $request->discount ?? 0,
+                    'paid_amount'    => $request->paid_amount ?? 0,
+                    'due_amount'     => $grandTotal - ($request->paid_amount ?? 0),
                     'remarks'        => $request->remarks,
                 ]);
 
-                // --- STEP E: CREATE NEW ITEMS & DEDUCT STOCK ---
-                foreach ($newItemsData as $item) {
-                    $sale->items()->create($item);
+                // 5. Create New Items & Update Stock using updateStock
+                if ($request->has('items')) {
+                    foreach ($request->items as $itemData) {
+                        $sale->items()->create([
+                            'product_id' => $itemData['product_id'],
+                            'unit_price' => $itemData['unit_price'],
+                            'quantity'   => $itemData['quantity'],
+                            'subtotal'   => $itemData['unit_price'] * $itemData['quantity'],
+                        ]);
 
-                    \App\Services\StockService::updateStock(
-                        $item['product_id'],
-                        $item['quantity'],
-                        'sale',
-                        $sale->invoice_no,
-                        "Updated Sale Invoice: {$sale->invoice_no}"
-                    );
+                        // Updated Stock Logic as requested
+                        \App\Services\StockService::updateStock(
+                            $itemData['product_id'],
+                            $itemData['quantity'],
+                            'sale',
+                            $sale->invoice_no,
+                            "Updated Sale Invoice: {$sale->invoice_no}"
+                        );
+                    }
+                }
+
+                // 6. Create New Customer Due Allocation
+                if ($request->has('customer_dues')) {
+                    foreach ($request->customer_dues as $dueData) {
+                        if (!empty($dueData['customer_id']) && $dueData['amount'] > 0) {
+                            $sale->customerDues()->create([
+                                'customer_id' => $dueData['customer_id'],
+                                'due_amount'  => $dueData['amount'],
+                                'note'        => $dueData['note'] ?? null,
+                            ]);
+                        }
+                    }
                 }
             });
 
-            return redirect()->route('sales.index')->with('success', 'Sale updated and inventory adjusted. Payments preserved.');
+            return redirect()->route('sales.index')->with('success', 'Invoice and Stock updated successfully.');
         } catch (\Exception $e) {
-            return back()->with('error', 'Update failed: ' . $e->getMessage())->withInput();
+            return back()->with('error', 'Update Failed: ' . $e->getMessage())->withInput();
         }
     }
 
@@ -304,35 +347,38 @@ class SaleController extends Controller
      */
     public function destroy($id)
     {
-        // 1. Find the sale with items to avoid N+1 issues
-        $sale = \App\Models\Sale::with('items')->findOrFail($id);
+        // Eager load items and customerDues to handle everything in one go
+        $sale = \App\Models\Sale::with(['items', 'customerDues'])->findOrFail($id);
 
         try {
             \Illuminate\Support\Facades\DB::transaction(function () use ($sale) {
-                // 2. Loop through items to reverse stock
+                // 1. Loop through items to reverse stock
                 foreach ($sale->items as $item) {
-                    // Using your StockService to increment product stock and log movement
                     \App\Services\StockService::reverseStock(
                         $item->product_id,
                         $item->quantity,
-                        'sale', // Original type was a sale
+                        'sale',
                         $sale->invoice_no
                     );
                 }
 
-                // 3. Delete the sale (Ensure SaleItem has onDelete('cascade') in migration)
+                // 2. Explicitly delete customer dues if migration doesn't have cascade delete
+                $sale->customerDues()->delete();
+
+                // 3. Delete the sale 
+                // Note: Ensure your SaleItem migration has ->onDelete('cascade') 
+                // or call $sale->items()->delete() here if it doesn't.
                 $sale->delete();
             });
 
-            // 4. Handle Response for AJAX (DataTable) or standard Request
             if (request()->ajax()) {
                 return response()->json([
                     'success' => true,
-                    'message' => 'Sale deleted and stock restored successfully.'
+                    'message' => 'Sale deleted, stock restored, and customer dues cleared.'
                 ]);
             }
 
-            return redirect()->route('sales.index')->with('success', 'Sale deleted and stock restored.');
+            return redirect()->route('sales.index')->with('success', 'Sale deleted successfully.');
         } catch (\Exception $e) {
             if (request()->ajax()) {
                 return response()->json([

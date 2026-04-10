@@ -55,37 +55,41 @@
                 columns: [{
                         data: 'id',
                         name: 'id'
-                    }, // 1
+                    },
                     {
                         data: 'name',
                         name: 'name'
-                    }, // 2
+                    },
+                    {
+                        data: 'company.name',
+                        name: 'company.name'
+                    },
                     {
                         data: 'unit',
                         name: 'unit'
-                    }, // 3
+                    },
                     {
                         data: 'purchase_price',
                         name: 'purchase_price'
-                    }, // 4
+                    },
                     {
                         data: 'percent',
                         name: 'percent'
-                    }, // 5
+                    },
                     {
                         data: 'sale_price',
                         name: 'sale_price'
-                    }, // 6
+                    },
                     {
                         data: 'stock',
                         name: 'stock'
-                    }, // 7
+                    },
                     {
                         data: 'action',
                         name: 'action',
                         orderable: false,
                         searchable: false
-                    } // 8
+                    }
                 ],
                 language: {
                     search: "",
@@ -138,6 +142,8 @@
             // 2. Set the Dropdown value for Unit
             // This finds the <option> that matches the product's unit_id
             document.getElementById('edit_unit_id').value = product.unit_id;
+            document.getElementById('edit_company_id').value = product.company_id;
+            document.getElementById('edit_opening_stock').value = product.opening_stock;
 
             // 3. Set the Form Action URL
             document.getElementById('editForm').action = '/products/' + product.id;

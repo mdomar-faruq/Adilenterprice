@@ -4,7 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\Customer;
 use App\Models\Payment;
-use App\Models\Sale;
+use App\Models\SalesDueCustomer;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
@@ -18,49 +18,47 @@ class PaymentController extends Controller
     public function index(Request $request)
     {
         if ($request->ajax()) {
-            // We only want 'payment' types (not 'return' adjustments) 
-            // and we eager load the customer to avoid N+1 queries.
-            $data = Payment::with('customer')
-                ->where('type', 'payment')
-                ->latest();
+            $data = Payment::with(['customer', 'dueRecord.sale', 'user'])->latest();
 
             return DataTables::of($data)
                 ->addIndexColumn()
-                // Format the Customer Name from the relationship
-                ->addColumn('customer_name', function ($row) {
-                    return $row->customer ? $row->customer->name : 'N/A';
+                ->addColumn('date', function ($row) {
+                    return '<strong>' . \Carbon\Carbon::parse($row->payment_date)->format('d M, Y') . '</strong><br>' .
+                        '<small class="text-muted">' . $row->created_at->format('h:i A') . '</small>';
                 })
-                // Format the Date to look nice (e.g., 02 Apr, 2026)
-                ->editColumn('payment_date', function ($row) {
-                    return date('d M, Y', strtotime($row->payment_date));
+                ->addColumn('customer', function ($row) {
+                    return $row->customer->name;
                 })
-                // Format the Amount with a dollar sign
-                ->editColumn('amount', function ($row) {
-                    return number_format($row->amount, 2);
+                ->addColumn('invoice_no', function ($row) {
+                    if (!$row->dueRecord || !$row->dueRecord->sale) {
+                        return '<span class="badge bg-light text-muted">N/A</span>';
+                    }
+
+                    $url = route('sales.show', $row->dueRecord->sale_id);
+                    return '<a href="' . $url . '" class="text-decoration-none">
+                <span class="badge bg-secondary-subtle text-secondary">#' .
+                        $row->dueRecord->sale->invoice_no .
+                        '</span>
+            </a>';
                 })
-                // Action Buttons
+                ->addColumn('method', function ($row) {
+                    $trx = $row->transaction_no ? '<br><small class="extra-small text-muted">' . $row->transaction_no . '</small>' : '';
+                    return '<small class="badge bg-info-subtle text-info">' . $row->payment_method . '</small>' . $trx;
+                })
+                ->addColumn('amount', function ($row) {
+                    return '<div class="fw-bold text-success">' . number_format($row->amount, 2) . '</div>';
+                })
                 ->addColumn('action', function ($row) {
-                    return '
-                    <div class="btn-group shadow-sm rounded-pill overflow-hidden">
-                        <a href="' . route('payments.show', $row->id) . '" class="btn btn-sm btn-white text-info">
-                            <i class="bi bi-printer"></i>
-                        </a>
-                        <button class="btn btn-sm btn-white text-danger delete-payment" data-id="' . $row->id . '">
+                    return '<button type="button" class="btn btn-sm btn-outline-danger delete-payment" data-id="' . $row->id . '">
                             <i class="bi bi-trash"></i>
-                        </button>
-                    </div>';
+                        </button>';
                 })
-                // Enable searching by customer name specifically
-                ->filterColumn('customer_name', function ($query, $keyword) {
-                    $query->whereHas('customer', function ($q) use ($keyword) {
-                        $q->where('name', 'like', "%{$keyword}%");
-                    });
-                })
-                ->rawColumns(['action'])
+                ->rawColumns(['date', 'invoice_no', 'method', 'amount', 'action'])
                 ->make(true);
         }
 
-        return view('payments.index');
+        $customers = Customer::orderBy('name')->get();
+        return view('payments.index', compact('customers'));
     }
 
     /**
@@ -68,8 +66,20 @@ class PaymentController extends Controller
      */
     public function create()
     {
-        $customers = Customer::all();
+        $customers = Customer::orderBy('name')->get();
         return view('payments.create', compact('customers'));
+    }
+
+    // AJAX: Get pending dues for a specific customer
+    public function getPendingDues($customerId)
+    {
+        $dues = SalesDueCustomer::with('sale')
+            ->where('customer_id', $customerId)
+            ->whereIn('status', ['unpaid', 'partial'])
+            ->orderBy('created_at', 'asc') // FIFO: Oldest first
+            ->get();
+
+        return response()->json($dues);
     }
 
     /**
@@ -77,69 +87,64 @@ class PaymentController extends Controller
      */
     public function store(Request $request)
     {
+        // Validate inputs
         $request->validate([
             'customer_id'    => 'required|exists:customers,id',
-            'amount'         => 'required|numeric|min:1',
             'payment_date'   => 'required|date',
-            'payment_method' => 'required',
+            'payment_method' => 'required|string',
+            'amounts'        => 'required|array',
         ]);
 
         try {
-            $result = DB::transaction(function () use ($request) {
-                $customer = Customer::lockForUpdate()->findOrFail($request->customer_id);
-                $paymentAmount = (float) $request->amount;
-                $remaining = $paymentAmount;
+            DB::transaction(function () use ($request) {
+                foreach ($request->amounts as $dueId => $payAmount) {
+                    // Only process rows where an amount was entered
+                    if ($payAmount && $payAmount > 0) {
 
-                // 1. Create the Main Payment Record (The Money Receipt)
-                $payment = Payment::create([
-                    'customer_id'    => $customer->id,
-                    'type'           => 'payment',
-                    'amount'         => $paymentAmount,
-                    'payment_date'   => $request->payment_date,
-                    'payment_method' => $request->payment_method,
-                    'note'           => $request->note,
-                    'user_id'        => Auth::id(),
-                ]);
+                        $dueRecord = SalesDueCustomer::with('sale')->findOrFail($dueId);
 
-                // 2. Distribute money to unpaid sales (Oldest First)
-                $unpaidSales = Sale::where('customer_id', $customer->id)
-                    ->where('due_amount', '>', 0)
-                    ->orderBy('sale_date', 'asc')
-                    ->get();
+                        // 1. Create the Payment Ledger Entry
+                        Payment::create([
+                            'customer_id'           => $request->customer_id,
+                            'sales_due_customer_id' => $dueId,
+                            'amount'                => $payAmount,
+                            'payment_date'          => $request->payment_date,
+                            'payment_method'        => $request->payment_method,
+                            'transaction_no'        => $request->transaction_no,
+                            'note'                  => $request->note,
+                            'user_id'               => Auth::id(),
+                        ]);
 
-                foreach ($unpaidSales as $sale) {
-                    if ($remaining <= 0) break;
+                        // 2. Update the SalesDueCustomer table (The specific person's debt)
+                        $dueRecord->paid_amount += $payAmount;
 
-                    $due = $sale->due_amount;
-                    $allocation = min($remaining, $due);
+                        // Set status based on math
+                        if ($dueRecord->paid_amount >= $dueRecord->due_amount) {
+                            $dueRecord->status = 'paid';
+                        } else {
+                            $dueRecord->status = 'partial';
+                        }
+                        $dueRecord->save();
 
-                    $sale->paid_amount += $allocation;
-                    $sale->due_amount  -= $allocation;
-                    $sale->payment_status = ($sale->due_amount <= 0) ? 'paid' : 'partial';
-                    $sale->save();
-
-                    $remaining -= $allocation;
-
-                    // Link this specific allocation to the payment (Optional: requires a pivot table)
+                        // 3. Update the Parent Sale table (The main invoice totals)
+                        // We use increment/decrement to ensure atomic database operations
+                        $sale = $dueRecord->sale;
+                        $sale->increment('paid_amount', $payAmount);
+                        $sale->decrement('due_amount', $payAmount);
+                    }
                 }
-
-                return "Money Receipt #MR-{$payment->id} generated for {$customer->name}";
             });
 
-            return response()->json(['success' => true, 'message' => $result]);
+            return redirect()->route('payments.create')
+                ->with('success', 'Payment processed. Invoices and customer dues have been updated.');
         } catch (\Exception $e) {
-            return response()->json(['success' => false, 'message' => $e->getMessage()], 422);
+            return back()->with('error', 'Payment failed: ' . $e->getMessage())->withInput();
         }
     }
     /**
      * Display the specified resource.
      */
-    public function show($id)
-    {
-        $payment = Payment::with(['customer', 'user'])->findOrFail($id);
-
-        return view('payments.show', compact('payment'));
-    }
+    public function show($id) {}
 
     /**
      * Show the form for editing the specified resource.
@@ -162,48 +167,44 @@ class PaymentController extends Controller
      */
     public function destroy($id)
     {
+        // Find the payment with related records
+        $payment = Payment::with('dueRecord.sale')->findOrFail($id);
+
         try {
-            $result = DB::transaction(function () use ($id) {
-                $payment = Payment::findOrFail($id);
-                $customerId = $payment->customer_id;
-                $refundAmount = $payment->amount;
+            DB::transaction(function () use ($payment) {
+                $dueRecord = $payment->dueRecord;
 
-                // 1. Find the sales for this customer that were affected.
-                // We look for sales where the paid_amount > 0, 
-                // and we restore debt starting from the LATEST sale (Reverse Waterfall).
-                $sales = Sale::where('customer_id', $customerId)
-                    ->where('paid_amount', '>', 0)
-                    ->orderBy('sale_date', 'desc')
-                    ->lockForUpdate()
-                    ->get();
+                // 1. Reverse Math in the 'sales_due_customers' table
+                $dueRecord->paid_amount -= $payment->amount;
 
-                foreach ($sales as $sale) {
-                    if ($refundAmount <= 0) break;
+                // Recalculate the status based on the new balance
+                if ($dueRecord->paid_amount <= 0) {
+                    $dueRecord->status = 'unpaid';
+                    $dueRecord->paid_amount = 0; // Prevent negative numbers
+                } else {
+                    $dueRecord->status = 'partial';
+                }
+                $dueRecord->save();
 
-                    // How much can we actually restore to this sale?
-                    // We shouldn't exceed the original total_amount.
-                    $canRestore = $sale->paid_amount;
-                    $restoreNow = min($refundAmount, $canRestore);
-
-                    $sale->paid_amount -= $restoreNow;
-                    $sale->due_amount  += $restoreNow;
-
-                    // Update status
-                    $sale->payment_status = ($sale->paid_amount <= 0) ? 'pending' : 'partial';
-                    $sale->save();
-
-                    $refundAmount -= $restoreNow;
+                // 2. Reverse Math in the 'sales' table (The Master Invoice)
+                if ($dueRecord->sale) {
+                    $dueRecord->sale->decrement('paid_amount', $payment->amount);
+                    $dueRecord->sale->increment('due_amount', $payment->amount);
                 }
 
-                // 2. Delete the actual Money Receipt record
+                // 3. Delete the payment record itself
                 $payment->delete();
-
-                return "Money Receipt deleted. $" . number_format($payment->amount, 2) . " has been added back to customer debt.";
             });
 
-            return response()->json(['success' => true, 'message' => $result]);
+            return response()->json([
+                'success' => true,
+                'message' => 'Payment has been deleted and balances restored successfully.'
+            ]);
         } catch (\Exception $e) {
-            return response()->json(['success' => false, 'message' => $e->getMessage()], 500);
+            return response()->json([
+                'success' => false,
+                'message' => 'Something went wrong: ' . $e->getMessage()
+            ], 500);
         }
     }
 }

@@ -24,6 +24,7 @@ class ProductFactory extends Factory
 
         return [
             'name' => $this->faker->words(3, true),
+            'company_id' => 1,
             'purchase_price' => $purchasePrice,
             'percent' => $percent,
             'sale_price' => round($salePrice, 2),

@@ -44,6 +44,7 @@
                             <tr class="small">
                                 <th>#CODE</th>
                                 <th>NAME</th>
+                                <th>COMPANY</th>
                                 <th>UNIT</th>
                                 <th>PURCHASE</th>
                                 <th>MARGIN</th>

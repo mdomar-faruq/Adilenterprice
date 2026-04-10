@@ -14,8 +14,10 @@ return new class extends Migration
         Schema::create('sales', function (Blueprint $table) {
             $table->id(); // Unsigned Big Integer
             $table->string('invoice_no')->unique();
-            $table->foreignId('customer_id')->constrained('customers')->onDelete('restrict');
             $table->date('sale_date');
+            $table->foreignId('delivery_id')->constrained('employees');
+            $table->foreignId('sr_id')->constrained('employees');
+            $table->string('route_no');
             $table->decimal('total_amount', 15, 2)->default(0);
             $table->decimal('discount', 15, 2)->default(0);
             $table->decimal('paid_amount', 15, 2)->default(0);

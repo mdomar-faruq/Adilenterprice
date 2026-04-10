@@ -4,6 +4,7 @@ use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\ProductController;
 use App\Http\Controllers\CompanyController;
 use App\Http\Controllers\CustomerController;
+use App\Http\Controllers\EmployeeController;
 use App\Http\Controllers\ExpenseController;
 use App\Http\Controllers\OrdersController;
 use App\Http\Controllers\PurchasesController;
@@ -38,12 +39,19 @@ Route::middleware(['auth'])->group(function () {
  Route::resource('customers', CustomerController::class);
  Route::resource('orders', OrdersController::class);
  Route::get('/orders/{id}', [OrdersController::class, 'show'])->name('orders.show');
+ Route::post('/sales-due-store', [SaleController::class, 'storeDueCustomer'])->name('sales.due.store');
  Route::resource('sales', SaleController::class);
  Route::get('/customer/{customerId}/purchased-products', [SalesReturnController::class, 'getPurchasedProducts']);
  Route::resource('sales_returns', SalesReturnController::class);
 
  //--------------------------Finance------------------------------------------------
  Route::resource('purchase_payments', PurchasePaymentController::class);
+ Route::get('payments/pending-dues/{customerId}', [PaymentController::class, 'getPendingDues'])->name('payments.pending-dues');
  Route::resource('payments', PaymentController::class);
  Route::resource('expenses', ExpenseController::class);
+
+ //--------------------------Setting------------------------------------------------
+ Route::resource('employees', EmployeeController::class);
 });
+
+
