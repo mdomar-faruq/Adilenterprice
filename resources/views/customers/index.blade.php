@@ -69,7 +69,7 @@
                                     class="form-control form-control-lg rounded-3" placeholder="Enter full name" required>
                             </div>
                             <div class="col-md-6">
-                                <label class="form-label fw-semibold">Phone <span class="text-danger">*</span></label>
+                                <label class="form-label fw-semibold">Phone</label>
                                 <input type="text" name="phone" id="phone" class="form-control rounded-3"
                                     placeholder="Phone number">
                             </div>

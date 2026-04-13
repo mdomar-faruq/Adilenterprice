@@ -71,9 +71,7 @@
                                     <th style="width: 15%;">Unit Price</th>
                                     <th style="width: 20%;">Subtotal</th>
                                     <th style="width: 10%; text-align: center;">
-                                        <button type="button" class="btn btn-success btn-sm addRow rounded-circle">
-                                            <i class="bi bi-plus-lg"></i>
-                                        </button>
+                                        Action
                                     </th>
                                 </tr>
                             </thead>
@@ -85,6 +83,7 @@
                                                 <option value="">Search Product...</option>
                                                 @foreach ($products as $product)
                                                     <option value="{{ $product->id }}"
+                                                        data-price="{{ $product->purchase_price }}"
                                                         {{ $item->product_id == $product->id ? 'selected' : '' }}>
                                                         {{ $product->name }}
                                                     </option>
@@ -112,7 +111,14 @@
                                 @endforeach
                             </tbody>
                         </table>
+                        {{-- Items Section --}}
+                        <div class="d-flex justify-content-between align-items-center mb-3">
+                            <button type="button" class="btn btn-primary btn-sm rounded-pill px-3 addRow">
+                                <i class="bi bi-plus-circle me-1"></i> Add Product
+                            </button>
+                        </div>
                     </div>
+
 
                     {{-- Grand Total Section --}}
                     <div class="row justify-content-end mt-4">
@@ -145,28 +151,32 @@
 @push('scripts')
     <script>
         $(document).ready(function() {
-            // 1. Initialize
             initSelect2();
             updateProductOptions();
             calculateGrandTotal();
 
-            // 2. Add Row
+            // 1. Add Row Logic
             $('.addRow').on('click', function() {
-                // Destroy Select2 to ensure clean cloning
-                $('.select2-item').select2('destroy');
+                let $tableBody = $('tbody');
+                let $firstRow = $tableBody.find('tr:first');
 
-                let tr = $('tbody tr:first').clone();
+                // Clean clone
+                let tr = $firstRow.clone();
+                tr.find('.select2-container').remove(); // Remove Select2 UI
+                tr.find('select').removeClass('select2-hidden-accessible').removeAttr('data-select2-id');
+
+                // Reset inputs
                 tr.find('input').val('');
                 tr.find('.qty').val(1);
                 tr.find('.subtotal').val('0.00');
                 tr.find('select').val('').trigger('change');
 
-                $('tbody').append(tr);
+                $tableBody.append(tr);
                 initSelect2();
                 updateProductOptions();
             });
 
-            // 3. Remove Row
+            // 2. Remove Row
             $('tbody').on('click', '.removeRow', function() {
                 if ($('tbody tr').length > 1) {
                     $(this).closest('tr').remove();
@@ -175,6 +185,16 @@
                 } else {
                     alert("At least one product is required.");
                 }
+            });
+
+            // 3. AUTO PRICE FETCHING
+            $('tbody').on('change', '.select2-item', function() {
+                let tr = $(this).closest('tr');
+                let price = $(this).find(':selected').data('price') || 0;
+
+                tr.find('.price').val(parseFloat(price).toFixed(2));
+                tr.find('.qty').trigger('change'); // Recalculate subtotal
+                updateProductOptions();
             });
 
             // 4. Calculations Logic
@@ -187,7 +207,14 @@
                 calculateGrandTotal();
             });
 
-            // 5. Prevent Duplicate Products
+            function calculateGrandTotal() {
+                let total = 0;
+                $('.subtotal').each(function() {
+                    total += parseFloat($(this).val()) || 0;
+                });
+                $('#grand_total').val(total.toFixed(2));
+            }
+
             function updateProductOptions() {
                 let selected = [];
                 $('.select2-item').each(function() {
@@ -205,32 +232,11 @@
                         }
                     });
                 });
-
-                // Refresh Select2 view
-                $('.select2-item').select2({
-                    placeholder: "Search Product...",
-                    width: '100%'
-                });
-            }
-
-            $('tbody').on('change', '.select2-item', function() {
-                updateProductOptions();
-            });
-
-            function calculateGrandTotal() {
-                let total = 0;
-                $('.subtotal').each(function() {
-                    total += parseFloat($(this).val()) || 0;
-                });
-                $('#grand_total').val(total.toFixed(2));
             }
 
             function initSelect2() {
                 $('.select2-item').select2({
-                    placeholder: "Search for a product...",
-                    width: '100%'
-                });
-                $('.select2-basic').select2({
+                    placeholder: "Search Product...",
                     width: '100%'
                 });
             }

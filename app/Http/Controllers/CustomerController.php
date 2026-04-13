@@ -54,8 +54,8 @@ class CustomerController extends Controller
     {
         // 1. Validation (Keep this outside try-catch so Laravel handles it normally)
         $request->validate([
-            'name'  => 'required|string|max:255',
-            'phone' => 'required|string|max:20|unique:customers,phone,' . $request->customer_id,
+            'name'  => 'required|string|max:255|unique:customers,name,' . $request->customer_id,
+            'phone' => 'nullable|string|max:20|unique:customers,phone,' . $request->customer_id,
             'email' => 'nullable|email',
         ]);
 

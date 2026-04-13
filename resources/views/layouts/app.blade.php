@@ -171,6 +171,7 @@
                             <li><a class="dropdown-item" href="/payments/create">Money Receipt</a></li>
                             <li><a class="dropdown-item" href="/purchase_payments/create">Payment Voucher</a></li>
                             <li><a class="dropdown-item" href="/expenses">Expenses</a></li>
+                            <li><a class="dropdown-item" href="/accounts">Accounts</a></li>
                         </ul>
                     </li>
                     <li class="nav-item dropdown">

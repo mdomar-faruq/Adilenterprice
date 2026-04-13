@@ -1,6 +1,7 @@
 <?php
 
 use Illuminate\Support\Facades\Route;
+use App\Http\Controllers\HomeController;
 use App\Http\Controllers\ProductController;
 use App\Http\Controllers\CompanyController;
 use App\Http\Controllers\CustomerController;
@@ -12,11 +13,13 @@ use App\Http\Controllers\SaleController;
 use App\Http\Controllers\PaymentController;
 use App\Http\Controllers\PurchasePaymentController;
 use App\Http\Controllers\SalesReturnController;
+use App\Http\Controllers\AccountSettingController;
 
 Auth::routes();
 
 Route::middleware(['auth'])->group(function () {
- Route::get('/', [App\Http\Controllers\HomeController::class, 'index'])->name('home');
+ Route::get('/', [HomeController::class, 'index'])->name('home');
+ Route::get('/dashboard/data/{period}', [HomeController::class, 'getDashboardData']);
 
  //--------------------------Inventory------------------------------------------------
 
@@ -49,9 +52,9 @@ Route::middleware(['auth'])->group(function () {
  Route::get('payments/pending-dues/{customerId}', [PaymentController::class, 'getPendingDues'])->name('payments.pending-dues');
  Route::resource('payments', PaymentController::class);
  Route::resource('expenses', ExpenseController::class);
+ Route::get('/accounts', [AccountSettingController::class, 'index'])->name('accounts.index');
+ Route::post('/accounts/update-opening', [AccountSettingController::class, 'updateOpening'])->name('accounts.updateOpening');
 
  //--------------------------Setting------------------------------------------------
  Route::resource('employees', EmployeeController::class);
 });
-
-
