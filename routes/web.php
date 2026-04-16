@@ -25,6 +25,7 @@ Route::middleware(['auth'])->group(function () {
 
  //=========== Start Product
  //Custom route FIRST
+ Route::get('products/stock_value_report', [ProductController::class, 'stockValueReport'])->name('products.stockValueReport');
  Route::get('products/export', [ProductController::class, 'export'])->name('products.export');
  Route::resource('products', ProductController::class);
  //===========End Product

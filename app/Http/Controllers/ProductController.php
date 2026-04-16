@@ -154,6 +154,35 @@ class ProductController extends Controller
         }
     }
 
+    public function stockValueReport()
+    {
+        $companyStockValues = Company::with(['products' => function ($query) {
+            $query->where('valid', 1);
+        }])
+            ->get()
+            ->map(function ($company) {
+                $totalValue = $company->products->sum(function ($product) {
+                    return $product->stock * $product->purchase_price;
+                });
+
+                return [
+                    'company_name'  => $company->name,
+                    'total_items'   => $company->products->count(),
+                    'total_qty'     => $company->products->sum('stock'),
+                    'stock_value'   => $totalValue,
+                    'products_list' => $company->products->map(function ($p) {
+                        return [
+                            'name' => $p->name,
+                            'stock' => $p->stock,
+                            'purchase_price' => $p->purchase_price
+                        ];
+                    })
+                ];
+            });
+
+        return view('products.stock_value', compact('companyStockValues'));
+    }
+
     public function export()
     {
         $fileName = 'products_export_' . date('Y-m-d') . '.csv';
@@ -166,7 +195,7 @@ class ProductController extends Controller
             "Expires"             => "0"
         ];
 
-        $columns = ['#Code', 'Name', 'Purchase Price', 'Margin %', 'Sale Price'];
+        $columns = ['#Code', 'Name', 'Purchase Price', 'Margin %', 'Sale Price', 'Stock'];
 
         // Using stream() with a cursor prevents memory crashes
         return response()->stream(function () use ($columns) {
@@ -181,7 +210,8 @@ class ProductController extends Controller
                     $product->unit->name ?? '1', // default pcs
                     $product->purchase_price,
                     $product->percent . '%',
-                    $product->sale_price
+                    $product->sale_price,
+                    $product->stock,
                 ]);
             }
             fclose($file);

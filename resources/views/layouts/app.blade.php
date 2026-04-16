@@ -160,6 +160,7 @@
                         </a>
                         <ul class="dropdown-menu border-0 shadow-sm">
                             <li><a class="dropdown-item" href="/products">Product</a></li>
+                            <li><a class="dropdown-item" href="/products/stock_value_report">Stock Value</a></li>
                         </ul>
                     </li>
                     <li class="nav-item dropdown">
