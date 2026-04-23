@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\Customer;
+use App\Models\Employee;
 use App\Models\Payment;
 use App\Models\Sale;
 use App\Models\SalesDueCustomer;
@@ -192,4 +193,6 @@ class CustomerController extends Controller
 
         return view('customers.ledger', compact('customer', 'ledger'));
     }
+
+
 }

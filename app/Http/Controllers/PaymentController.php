@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\Customer;
+use App\Models\Employee;
 use App\Models\Payment;
 use App\Models\SalesDueCustomer;
 use Illuminate\Http\Request;
@@ -57,7 +58,8 @@ class PaymentController extends Controller
                 ->make(true);
         }
 
-        $customers = Customer::orderBy('name')->get();
+        // $customers = Customer::orderBy('name')->get();
+        $customers = Employee::orderBy('name')->get();
         return view('payments.index', compact('customers'));
     }
 
@@ -66,7 +68,9 @@ class PaymentController extends Controller
      */
     public function create()
     {
-        $customers = Customer::orderBy('name')->get();
+        //DSR is Customer
+        $customers = Employee::orderBy('name')->get();
+        // $customers = Customer::orderBy('name')->get();
         return view('payments.create', compact('customers'));
     }
 

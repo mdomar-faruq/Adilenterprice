@@ -8,6 +8,7 @@ use App\Models\Product;
 use App\Models\Customer;
 use App\Models\Employee;
 use App\Models\Payment;
+use App\Models\SalesDueCustomer;
 use App\Services\StockService;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Http\Request;
@@ -44,13 +45,7 @@ class SaleController extends Controller
 
                     return '
                 <div class="btn-group shadow-sm">
-                    <button type="button" class="btn btn-sm btn-outline-success add-due-btn" 
-                        data-id="' . $row->id . '" 
-                        data-invoice="' . $row->invoice_no . '" 
-                        data-due="' . $remainingToAssign . '" 
-                        title="Add Customer Due">
-                        <i class="bi bi-person-plus-fill"></i>
-                    </button>
+                  
                     <a href="' . route('sales.show', $row->id) . '" class="btn btn-sm btn-outline-info">
                         <i class="bi bi-eye"></i>
                     </a>
@@ -67,15 +62,13 @@ class SaleController extends Controller
                     $total = number_format($row->customerDues->sum('due_amount'), 2);
                     $colorClass = ($row->due_amount > $row->customerDues->sum('due_amount')) ? 'text-danger' : 'text-success';
 
-                    return "<small class='text-muted'>$count Customers Assigned</small><br>
+                    return "<small class='text-muted'>DSR Assigned</small><br>
                         <span class='{$colorClass}'>Assigned: $total</span>";
                 })
                 ->rawColumns(['action', 'due_amount', 'due_details'])
                 ->make(true);
         }
-
-        $customers = Customer::orderBy('name')->get();
-        return view('sales.index', compact('customers'));
+        return view('sales.index');
     }
     /**
      * Show the form for creating a new resource.
@@ -176,6 +169,15 @@ class SaleController extends Controller
                     );
                 }
 
+                //6. DSR Due / customer Due
+                \App\Models\SalesDueCustomer::create([
+                    'sale_id'     => $sale->id,
+                    'customer_id' => $sale->delivery_id,
+                    'due_amount'  => $sale->due_amount,
+                    'note'        => null,
+                ]);
+
+
                 return $sale;
             });
 
@@ -249,10 +251,9 @@ class SaleController extends Controller
     {
         $sale = Sale::with(['items.product', 'customerDues.customer'])->findOrFail($id);
         $employees = Employee::orderBy('name')->get();
-        $customers = Customer::orderBy('name')->get();
         $products = Product::orderBy('name')->get();
 
-        return view('sales.edit', compact('sale', 'employees', 'customers', 'products'));
+        return view('sales.edit', compact('sale', 'employees', 'products'));
     }
 
     /**
@@ -322,17 +323,13 @@ class SaleController extends Controller
                 }
 
                 // 6. Create New Customer Due Allocation
-                if ($request->has('customer_dues')) {
-                    foreach ($request->customer_dues as $dueData) {
-                        if (!empty($dueData['customer_id']) && $dueData['amount'] > 0) {
-                            $sale->customerDues()->create([
-                                'customer_id' => $dueData['customer_id'],
-                                'due_amount'  => $dueData['amount'],
-                                'note'        => $dueData['note'] ?? null,
-                            ]);
-                        }
-                    }
-                }
+                //6. DSR Due / customer Due
+                \App\Models\SalesDueCustomer::create([
+                    'sale_id'     => $sale->id,
+                    'customer_id' => $request->delivery_id,
+                    'due_amount'  => $grandTotal - ($request->paid_amount ?? 0),
+                    'note'        => null,
+                ]);
             });
 
             return redirect()->route('sales.index')->with('success', 'Invoice and Stock updated successfully.');
@@ -389,5 +386,69 @@ class SaleController extends Controller
 
             return back()->with('error', 'Error: ' . $e->getMessage());
         }
+    }
+
+    public function dsrLedger()
+    {
+        $employees = Employee::orderBy('name')->get();
+        return view('sales.dsr_select', compact('employees'));
+    }
+    public function dsrOpeningStore(Request $request)
+    {
+        $request->validate([
+            'employee_id' => 'required',
+            'opening_balance' => 'required',
+        ]);
+
+        $employee = Employee::findOrFail($request->employee_id);
+        $employee->update([
+            'opening_balance' => $request->opening_balance
+        ]);
+        return redirect()->route('dsr_details.ledger', $employee->id)
+            ->with('success', 'Opening balance updated successfully!');
+    }
+
+    public function DsrDetailsledger($id)
+    {
+        $customer = Employee::findOrFail($id);
+
+        // 1. Get Invoices (Debits)
+        $invoices = SalesDueCustomer::where('customer_id', $id)
+            ->with('sale')
+            ->get()
+            ->map(function ($item) {
+                return (object)[
+                    'date'      => $item->created_at,
+                    'type'      => 'Invoice',
+                    'reference' => '#' . $item->sale->invoice_no,
+                    'debit'     => $item->due_amount,
+                    'credit'    => 0,
+                ];
+            });
+
+        // 2. Get Payments (Credits)
+        $payments = Payment::where('customer_id', $id)
+            ->get()
+            ->map(function ($item) {
+                return (object)[
+                    'date'      => $item->payment_date,
+                    'type'      => 'Payment',
+                    'reference' => $item->payment_method . ($item->transaction_no ? ' - ' . $item->transaction_no : ''),
+                    'debit'     => 0,
+                    'credit'    => $item->amount,
+                ];
+            });
+
+        // 3. Merge, Sort, and Calculate Running Balance
+        $merged = $invoices->concat($payments)->sortBy('date');
+
+        $runningBalance = $customer->opening_balance;
+        $ledger = $merged->map(function ($row) use (&$runningBalance) {
+            $runningBalance += ($row->debit - $row->credit);
+            $row->balance = $runningBalance;
+            return $row;
+        });
+
+        return view('sales.ledger', compact('customer', 'ledger'));
     }
 }

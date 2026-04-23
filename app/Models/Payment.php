@@ -21,11 +21,11 @@ class Payment extends Model
     ];
 
     /**
-     * The customer who made the payment.
+     * The employee who made the payment.
      */
     public function customer()
     {
-        return $this->belongsTo(Customer::class);
+        return $this->belongsTo(Employee::class);
     }
 
     /**

@@ -10,12 +10,12 @@
                             <ol class="breadcrumb mb-1">
                                 <li class="breadcrumb-item"><a href="/" class="text-decoration-none text-muted">Home</a>
                                 </li>
-                                <li class="breadcrumb-item active fw-semibold text-primary">Payment</li>
+                                <li class="breadcrumb-item active fw-semibold text-primary">Money Receipt</li>
                             </ol>
                         </nav>
                     </div>
                     <div class="col-auto">
-                        <a href="{{ route('payments.index') }}" class="btn btn-outline-secondary rounded-pill px-4">
+                        <a href="{{ route('payments.index') }}" class="btn btn-gradient text-white rounded-pill px-4">
                             <i class="bi bi-arrow-left me-2"></i>Back Index
                         </a>
                     </div>
@@ -23,7 +23,7 @@
 
                 <div class="d-flex align-items-center justify-content-between mb-4">
                     <div>
-                        <h4 class="mb-0 fw-bold text-dark">Customer Payment Collection</h4>
+                        <h4 class="mb-0 fw-bold text-dark">DSR Payment Collection</h4>
                         <p class="text-muted small mb-0">Manage debt collection and automatic invoice distribution.</p>
                     </div>
                     <div class="text-end">

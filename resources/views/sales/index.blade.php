@@ -50,7 +50,7 @@
     </div>
 
 
-    <div class="modal fade" id="dueCustomerModal" tabindex="-1" aria-hidden="true">
+    {{-- <div class="modal fade" id="dueCustomerModal" tabindex="-1" aria-hidden="true">
         <div class="modal-dialog modal-xl modal-fullscreen-sm-down">
             <form id="dueCustomerForm">
                 @csrf
@@ -139,7 +139,7 @@
                 </div>
             </form>
         </div>
-    </div>
+    </div> --}}
 @endsection
 
 @push('scripts')
@@ -254,7 +254,8 @@
         });
     </script>
 
-    <script>
+    {{-- Due customer  --}}
+    {{-- <script>
         $(document).ready(function() {
             // Open Modal and set ID
 
@@ -307,7 +308,7 @@
                 });
             });
         });
-    </script>
+    </script> 
 
     <script>
         function calculateDueLimits() {
@@ -357,4 +358,7 @@
             calculateDueLimits();
         });
     </script>
+    --}}
+
+    {{-- Due customer  --}}
 @endpush

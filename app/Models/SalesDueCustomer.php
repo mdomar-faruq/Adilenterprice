@@ -24,7 +24,7 @@ class SalesDueCustomer extends Model
     public function customer()
     {
         // This is the missing link causing your error
-        return $this->belongsTo(Customer::class, 'customer_id');
+        return $this->belongsTo(Employee::class, 'customer_id');
     }
 
     /**

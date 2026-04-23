@@ -39,8 +39,15 @@ Route::middleware(['auth'])->group(function () {
 
 
  //--------------------------Sales------------------------------------------------
+ //DSR Ledger Report
+ Route::get('/dsr/ledger', [SaleController::class, 'dsrLedger'])->name('dsr.ledger');
+ Route::post('/dsr_opening/store', [SaleController::class, 'dsrOpeningStore'])->name('dsr_opening.store');
+ Route::get('/dsr/{id}/ledger', [SaleController::class, 'DsrDetailsledger'])->name('dsr_details.ledger');
+
+ //customer not use 
  Route::get('/customers/{id}/ledger', [CustomerController::class, 'ledger'])->name('customers.ledger');
  Route::resource('customers', CustomerController::class);
+ //
  Route::resource('orders', OrdersController::class);
  Route::get('/orders/{id}', [OrdersController::class, 'show'])->name('orders.show');
  Route::post('/sales-due-store', [SaleController::class, 'storeDueCustomer'])->name('sales.due.store');

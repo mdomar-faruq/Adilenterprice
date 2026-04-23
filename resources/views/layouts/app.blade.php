@@ -148,8 +148,8 @@
                             <i class="bi bi-box-seam me-1"></i> Sales
                         </a>
                         <ul class="dropdown-menu border-0 shadow-sm">
-                            <li><a class="dropdown-item" href="/customers">Customer</a></li>
-                            <li><a class="dropdown-item" href="/orders">Orders</a></li>
+                            <li><a class="dropdown-item" href="/dsr/ledger">DSR Ledger</a></li>
+                            {{-- <li><a class="dropdown-item" href="/orders">Orders</a></li> --}}
                             <li><a class="dropdown-item" href="/sales">Sales</a></li>
                             {{-- <li><a class="dropdown-item" href="/sales_returns">Sales Return</a></li> --}}
                         </ul>
