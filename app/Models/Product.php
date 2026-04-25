@@ -16,6 +16,7 @@ class Product extends Model
         'sale_price',
         'opening_stock',
         'stock',
+        'damage_stock',
         'company_id',
         'unit_id',
         'user_id',

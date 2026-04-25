@@ -22,7 +22,7 @@ return new class extends Migration
             $table->integer('balance_after')->default(0);  // Stock level after this transaction
 
             // Metadata
-            $table->enum('type', ['purchase', 'sale', 'return', 'adjustment', 'initial']);
+            $table->enum('type', ['purchase', 'sale', 'return', 'adjustment', 'initial', 'damage_adjustment']);
             $table->string('reference_no'); // Purchase No (PUR-001) or Sale No (INV-552)
             $table->foreignId('user_id')->constrained(); // Who performed the action?
 

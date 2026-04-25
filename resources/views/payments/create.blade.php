@@ -43,12 +43,13 @@
                                     <h6 class="fw-bold mb-3">1. Payment Information</h6>
                                     <div class="row g-3">
                                         <div class="col-md-6">
-                                            <label class="form-label small fw-bold">Select Customer</label>
+                                            <label class="form-label small fw-bold">Select DSR</label>
                                             <select name="customer_id" id="customer_id" class="form-select select2"
                                                 required>
-                                                <option value="">-- Search Customer --</option>
+                                                <option value="">-- Search DSR --</option>
                                                 @foreach ($customers as $customer)
-                                                    <option value="{{ $customer->id }}">{{ $customer->name }}</option>
+                                                    <option value="{{ $customer->id }}">{{ $customer->name }} |
+                                                        {{ $customer->designation }}</option>
                                                 @endforeach
                                             </select>
                                         </div>

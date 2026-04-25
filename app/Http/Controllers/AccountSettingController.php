@@ -100,4 +100,41 @@ class AccountSettingController extends Controller
     {
         //
     }
+
+    public function profitLossReport(Request $request)
+    {
+        $start = $request->get('start_date', date('Y-m-01'));
+        $end = $request->get('end_date', date('Y-m-d'));
+
+        // 1. Get Sales and calculate COGS (Cost of Goods Sold)
+        $salesData = \App\Models\SaleItem::with('product')
+            ->whereHas('sale', function ($q) use ($start, $end) {
+                $q->whereBetween('sale_date', [$start, $end]);
+            })->get();
+
+        $totalSales = $salesData->sum('subtotal');
+
+        // Total Cost = Quantity Sold * Product Purchase Price
+        $totalCost = $salesData->sum(function ($item) {
+            return $item->quantity * ($item->product->purchase_price ?? 0);
+        });
+
+        $grossProfit = $totalSales - $totalCost;
+
+        // 2. Get Expenses
+        $totalExpenses = \App\Models\Expense::whereBetween('expense_date', [$start, $end])
+            ->sum('amount');
+
+        $netProfit = $grossProfit - $totalExpenses;
+
+        return view('accounts.profit_loss', compact(
+            'totalSales',
+            'totalCost',
+            'grossProfit',
+            'totalExpenses',
+            'netProfit',
+            'start',
+            'end'
+        ));
+    }
 }

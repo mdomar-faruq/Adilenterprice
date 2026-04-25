@@ -217,4 +217,30 @@ class ProductController extends Controller
             fclose($file);
         }, 200, $headers);
     }
+
+    public function damageReport(Request $request)
+    {
+        $start_date = $request->get('start_date', date('Y-m-01')); // Default to start of month
+        $end_date = $request->get('end_date', date('Y-m-d'));
+
+        $damageItems = \App\Models\ProductReturnItem::with(['product', 'returnHeader'])
+            ->whereHas('returnHeader', function ($q) use ($start_date, $end_date) {
+                $q->whereBetween('return_date', [$start_date, $end_date]);
+            })
+            ->where('damage_qty', '>', 0)
+            ->get();
+
+        // Grouping data for summary
+        $summary = $damageItems->groupBy('product_id')->map(function ($items) {
+            return [
+                'product_name' => $items->first()->product->name,
+                'total_qty' => $items->sum('damage_qty'),
+                'total_loss' => $items->sum(function ($item) {
+                    return $item->damage_qty * $item->unit_price;
+                }),
+            ];
+        });
+
+        return view('products.damage', compact('damageItems', 'summary', 'start_date', 'end_date'));
+    }
 }

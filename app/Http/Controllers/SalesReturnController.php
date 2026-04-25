@@ -64,9 +64,8 @@ class SalesReturnController extends Controller
      */
     public function create()
     {
-        $customers = Customer::all();
-        $products = Product::where('stock', '>', -1)->get(); // Get all available products
-        return view('sales_returns.create', compact('customers', 'products'));
+        $products = Product::where('stock', '>', -1)->get();
+        return view('sales_returns.create', compact('customers'));
     }
 
     // SalesReturnController.php
@@ -75,7 +74,6 @@ class SalesReturnController extends Controller
         $products = DB::table('sale_items')
             ->join('sales', 'sale_items.sale_id', '=', 'sales.id')
             ->join('products', 'sale_items.product_id', '=', 'products.id')
-            ->where('sales.customer_id', $id)
             ->select(
                 'products.id',
                 'products.name',

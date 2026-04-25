@@ -148,12 +148,22 @@
                             <i class="bi bi-box-seam me-1"></i> Sales
                         </a>
                         <ul class="dropdown-menu border-0 shadow-sm">
-                            <li><a class="dropdown-item" href="/dsr/ledger">DSR Ledger</a></li>
                             {{-- <li><a class="dropdown-item" href="/orders">Orders</a></li> --}}
                             <li><a class="dropdown-item" href="/sales">Sales</a></li>
-                            {{-- <li><a class="dropdown-item" href="/sales_returns">Sales Return</a></li> --}}
+                            {{-- <li><a class="dropdown-item" href="/returns">Return</a></li> --}}
+
+                            <li><a class="dropdown-item" href="/sales/sr-sales">SR Sales Report</a></li>
+                            <li><a class="dropdown-item" href="/sales/company-sales">Company Sales Report</a></li>
                         </ul>
                     </li>
+
+                    <li class="nav-item">
+                        <a class="nav-link" href="/returns">
+                            <!-- Settings icon with text -->
+                            <i class="bi bi-box-seam me-1"></i> Return
+                        </a>
+                    </li>
+
                     <li class="nav-item dropdown">
                         <a class="nav-link dropdown-toggle" href="#" data-bs-toggle="dropdown">
                             <i class="bi bi-map me-1"></i> Inventory
@@ -161,6 +171,7 @@
                         <ul class="dropdown-menu border-0 shadow-sm">
                             <li><a class="dropdown-item" href="/products">Product</a></li>
                             <li><a class="dropdown-item" href="/products/stock_value_report">Stock Value</a></li>
+                            <li><a class="dropdown-item" href="/products/damage_report">Product Damage</a></li>
                         </ul>
                     </li>
                     <li class="nav-item dropdown">
@@ -169,10 +180,13 @@
 
                         </a>
                         <ul class="dropdown-menu border-0 shadow-sm">
+                            <li><a class="dropdown-item" href="/dsr/ledger">DSR Ledger</a></li>
                             <li><a class="dropdown-item" href="/payments/create">Money Receipt</a></li>
                             <li><a class="dropdown-item" href="/purchase_payments/create">Payment Voucher</a></li>
                             <li><a class="dropdown-item" href="/expenses">Expenses</a></li>
                             <li><a class="dropdown-item" href="/accounts">Accounts</a></li>
+                            <li><a class="dropdown-item" href="/accounts/profit-loss-report">Profit & Loss
+                                    Statement</a></li>
                         </ul>
                     </li>
                     <li class="nav-item dropdown">

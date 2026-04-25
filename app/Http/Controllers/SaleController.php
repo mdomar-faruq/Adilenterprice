@@ -451,4 +451,84 @@ class SaleController extends Controller
 
         return view('sales.ledger', compact('customer', 'ledger'));
     }
+
+    //
+    public function companySalesReport(Request $request)
+    {
+        if ($request->has(['company_id', 'start_date', 'end_date'])) {
+            $request->validate([
+                'company_id' => 'required',
+                'start_date' => 'required|date',
+                'end_date' => 'required|date',
+            ]);
+
+            $company_id = $request->company_id;
+            $start = $request->start_date;
+            $end = $request->end_date;
+        } else {
+            $company_id = \App\Models\Company::first()->id;
+            $start = $request->get('start_date', date('Y-m-01')); // Default to start of month
+            $end = $request->get('end_date', date('Y-m-d'));
+        }
+        // Fetch sold items filtered by the product's company
+        $salesData = \App\Models\SaleItem::with(['product', 'sale'])
+            ->whereHas('product', function ($q) use ($company_id) {
+                $q->where('company_id', $company_id);
+            })
+            ->whereHas('sale', function ($q) use ($start, $end) {
+                $q->whereBetween('sale_date', [$start, $end]);
+            })
+            ->get();
+
+        // Grouping summary by product for a quick overview
+        $productSummary = $salesData->groupBy('product_id')->map(function ($items) {
+            return [
+                'name' => $items->first()->product->name,
+                'total_qty' => $items->sum('quantity'),
+                'total_amount' => $items->sum('subtotal'),
+            ];
+        });
+
+        $company = \App\Models\Company::find($company_id);
+        $companies = \App\Models\Company::all();
+
+        return view('sales.company_sales', compact('salesData', 'productSummary', 'company', 'companies', 'start', 'end'));
+    }
+
+    //sr wise report
+    public function srSalesReport(Request $request)
+    {
+        if ($request->has(['sr_id', 'start_date', 'end_date'])) {
+            $request->validate([
+                'sr_id' => 'required|exists:employees,id', // Assuming SRs are in employees table
+                'start_date' => 'required|date',
+                'end_date' => 'required|date',
+            ]);
+
+            $srId = $request->sr_id;
+            $start = $request->start_date;
+            $end = $request->end_date;
+        } else {
+            $srId = \App\Models\Employee::first()->id;
+            $start = $request->get('start_date', date('Y-m-01')); // Default to start of month
+            $end = $request->get('end_date', date('Y-m-d'));
+        }
+
+
+        // Fetch Sales with their items and products
+        $sales = \App\Models\Sale::with(['items.product', 'sr'])
+            ->where('sr_id', $srId)
+            ->whereBetween('sale_date', [$start, $end])
+            ->get();
+
+        // Summary Calculations
+        $totalSalesAmount = $sales->sum('total_amount');
+        $totalCollection = $sales->sum('paid_amount');
+        $totalDue = $sales->sum('due_amount');
+
+        $srs = \App\Models\Employee::all();
+        $selectedSr = \App\Models\Employee::find($srId);
+
+        return view('sales.sr_sales', compact('sales', 'totalSalesAmount', 'totalCollection', 'totalDue', 'selectedSr', 'srs', 'start', 'end'));
+    }
 }

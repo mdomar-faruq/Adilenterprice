@@ -14,6 +14,7 @@ use App\Http\Controllers\PaymentController;
 use App\Http\Controllers\PurchasePaymentController;
 use App\Http\Controllers\SalesReturnController;
 use App\Http\Controllers\AccountSettingController;
+use App\Http\Controllers\ProductReturnController;
 
 Auth::routes();
 
@@ -26,6 +27,7 @@ Route::middleware(['auth'])->group(function () {
  //=========== Start Product
  //Custom route FIRST
  Route::get('products/stock_value_report', [ProductController::class, 'stockValueReport'])->name('products.stockValueReport');
+ Route::get('products/damage_report', [ProductController::class, 'damageReport'])->name('products.damage');
  Route::get('products/export', [ProductController::class, 'export'])->name('products.export');
  Route::resource('products', ProductController::class);
  //===========End Product
@@ -47,19 +49,23 @@ Route::middleware(['auth'])->group(function () {
  //customer not use 
  Route::get('/customers/{id}/ledger', [CustomerController::class, 'ledger'])->name('customers.ledger');
  Route::resource('customers', CustomerController::class);
- //
+ //customer not use 
  Route::resource('orders', OrdersController::class);
  Route::get('/orders/{id}', [OrdersController::class, 'show'])->name('orders.show');
  Route::post('/sales-due-store', [SaleController::class, 'storeDueCustomer'])->name('sales.due.store');
+ Route::get('/sales/company-sales', [SaleController::class, 'companySalesReport'])->name('sales.company-sales');
+ Route::get('/sales/sr-sales', [SaleController::class, 'srSalesReport'])->name('sales.sr-sales');
  Route::resource('sales', SaleController::class);
  Route::get('/customer/{customerId}/purchased-products', [SalesReturnController::class, 'getPurchasedProducts']);
  Route::resource('sales_returns', SalesReturnController::class);
+ Route::resource('returns', ProductReturnController::class);
 
  //--------------------------Finance------------------------------------------------
  Route::resource('purchase_payments', PurchasePaymentController::class);
  Route::get('payments/pending-dues/{customerId}', [PaymentController::class, 'getPendingDues'])->name('payments.pending-dues');
  Route::resource('payments', PaymentController::class);
  Route::resource('expenses', ExpenseController::class);
+ Route::get('/accounts/profit-loss-report', [AccountSettingController::class, 'profitLossReport'])->name('accounts.profit-loss');
  Route::get('/accounts', [AccountSettingController::class, 'index'])->name('accounts.index');
  Route::post('/accounts/update-opening', [AccountSettingController::class, 'updateOpening'])->name('accounts.updateOpening');
 

@@ -84,4 +84,52 @@ class StockService
    ]);
   });
  }
+
+ /**
+  * Specifically for updating the damage_stock column
+  */
+ public static function updateDamageStock($productId, $quantity, $isIncrement, $referenceNo)
+ {
+  return DB::transaction(function () use ($productId, $quantity, $isIncrement, $referenceNo) {
+   $product = Product::lockForUpdate()->findOrFail($productId);
+
+   if ($isIncrement) {
+    $product->increment('damage_stock', $quantity);
+   } else {
+    $product->decrement('damage_stock', $quantity);
+   }
+
+   // Log this movement as a 'damage_adjustment'
+   return StockMovement::create([
+    'product_id'     => $productId,
+    'type'           => 'damage_adjustment',
+    'quantity'       => $quantity,
+    'balance_after'  => $product->damage_stock, // Track current damage balance
+    'reference_no'   => $referenceNo,
+    'remarks'        => $isIncrement ? "Damage Added" : "Damage Removed/Returned",
+    'user_id'        => Auth::id() ?? 1,
+   ]);
+  });
+ }
+
+ /**
+  * Specifically for updating the stock column, items that are broken.
+  */
+ public static function recordAccidentalDamage($productId, $quantity, $ref, $remarks = "Accidental Damage")
+ {
+  return DB::transaction(function () use ($productId, $quantity, $ref, $remarks) {
+   $product = Product::lockForUpdate()->findOrFail($productId);
+   // $ref = 'ADJ-' . time(); // Unique Reference
+
+   // 1. Remove from Sellable Stock
+   // This uses your existing decrement logic
+   self::updateStock($productId, $quantity, 'adjustment', $ref, $remarks);
+
+   // 2. Add to Damage Stock
+   // true = increment
+   self::updateDamageStock($productId, $quantity, true, $ref);
+
+   return true;
+  });
+ }
 }

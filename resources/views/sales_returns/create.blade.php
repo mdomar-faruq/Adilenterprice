@@ -52,7 +52,8 @@
                             <thead class="bg-light">
                                 <tr>
                                     <th style="width: 45%">Product</th>
-                                    <th style="width: 15%">Qty</th>
+                                    <th style="width: 15%">Goode Qty</th>
+                                    <th style="width: 15%">Damage Qty</th>
                                     <th style="width: 15%">Sales Price</th>
                                     <th style="width: 20%">Subtotal</th>
                                     <th style="width: 5%"></th>
@@ -153,7 +154,11 @@
                     </select>
                 </td>
                 <td>
-                    <input type="number" name="items[${rowIdx}][quantity]" class="form-control qty" value="1" min="1">
+                    <input type="number" name="items[${rowIdx}][quantity]" class="form-control good_qty" value="1" min="1">
+                    <small class="text-primary fw-bold qty-limit-msg"></small>
+                </td>
+                 <td>
+                    <input type="number" name="items[${rowIdx}][quantity]" class="form-control damage_qty" value="1" min="1">
                     <small class="text-primary fw-bold qty-limit-msg"></small>
                 </td>
                 <td>
