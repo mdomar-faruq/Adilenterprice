@@ -46,8 +46,8 @@
                                 <th>Date</th>
                                 <th>Company</th>
                                 <th>Total Amount</th>
-                                <th class="text-end text-success">Paid</th>
-                                <th class="text-end text-danger">Due</th>
+                                {{-- <th class="text-end text-success">Paid</th>
+                                <th class="text-end text-danger">Due</th> --}}
                                 <th class="all">Action</th>
                             </tr>
                         </thead>
@@ -94,17 +94,17 @@
                             name: 'total_amount',
                             render: $.fn.dataTable.render.number(',', '.', 2)
                         },
-                        {
-                            data: 'paid_amount',
-                            name: 'paid_amount',
-                            className: 'text-end text-success'
-                        },
-                        {
-                            data: 'due_amount',
-                            name: 'due_amount',
-                            className: 'text-end text-danger',
+                        // {
+                        //     data: 'paid_amount',
+                        //     name: 'paid_amount',
+                        //     className: 'text-end text-success'
+                        // },
+                        // {
+                        //     data: 'due_amount',
+                        //     name: 'due_amount',
+                        //     className: 'text-end text-danger',
 
-                        },
+                        // },
                         {
                             data: 'action',
                             name: 'action',

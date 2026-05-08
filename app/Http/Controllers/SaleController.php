@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\Sale;
 use App\Models\SaleItem;
+use App\Models\SalesDamageItems;
 use App\Models\Product;
 use App\Models\Customer;
 use App\Models\Employee;
@@ -138,6 +139,7 @@ class SaleController extends Controller
                 $paidAmount  = $request->paid_amount ?? 0;
                 $dueAmount   = $totalAmount - $paidAmount;
 
+
                 // 4. Create the Master Sale (Removed customer_id, Added Delivery/SR/Route)
                 $sale = Sale::create([
                     'invoice_no'     => 'INV-' . strtoupper(Str::random(4)) . time(),
@@ -170,12 +172,16 @@ class SaleController extends Controller
                 }
 
                 //6. DSR Due / customer Due
-                \App\Models\SalesDueCustomer::create([
-                    'sale_id'     => $sale->id,
-                    'customer_id' => $sale->delivery_id,
-                    'due_amount'  => $sale->due_amount,
-                    'note'        => null,
-                ]);
+                if ($dueAmount == 0) {
+                    //nothing
+                } else {
+                    \App\Models\SalesDueCustomer::create([
+                        'sale_id'     => $sale->id,
+                        'customer_id' => $sale->delivery_id,
+                        'due_amount'  => $sale->due_amount,
+                        'note'        => null,
+                    ]);
+                }
 
 
                 return $sale;
@@ -249,7 +255,7 @@ class SaleController extends Controller
      */
     public function edit($id)
     {
-        $sale = Sale::with(['items.product', 'customerDues.customer'])->findOrFail($id);
+        $sale = Sale::with(['items.product', 'damageItems.product', 'customerDues.customer'])->findOrFail($id);
         $employees = Employee::orderBy('name')->get();
         $products = Product::orderBy('name')->get();
 
@@ -261,7 +267,7 @@ class SaleController extends Controller
      */
     public function update(Request $request, $id)
     {
-        $sale = Sale::with('items')->findOrFail($id);
+        $sale = Sale::with('items', 'damageItems')->findOrFail($id);
 
         try {
             DB::transaction(function () use ($request, $sale) {
@@ -271,22 +277,44 @@ class SaleController extends Controller
                         $item->product_id,
                         $item->quantity,
                         'sale_edit_reverse',
-                        $sale->invoice_no
+                        $sale->invoice_no,
+                    );
+                }
+                // 1.1. Reverse ALL old stock movements first
+                foreach ($sale->damageItems as $item) {
+                    \App\Services\StockService::reverseStock(
+                        $item->product_id,
+                        $item->quantity,
+                        'return',
+                        $sale->invoice_no,
                     );
                 }
 
                 // 2. Remove old Items and old Customer Dues
                 $sale->items()->delete();
+                $sale->damageItems()->delete();
                 $sale->customerDues()->delete();
 
                 // 3. Calculate Financials
-                $totalAmount = 0;
+                $totalItemAmount = 0;
+                $totalDamageAmount = 0;
                 if ($request->has('items')) {
                     foreach ($request->items as $item) {
-                        $totalAmount += ($item['unit_price'] * $item['quantity']);
+                        $totalItemAmount += ($item['unit_price'] * $item['quantity']);
                     }
                 }
-                $grandTotal = $totalAmount - ($request->discount ?? 0);
+                if ($request->has('items_02')) {
+                    foreach ($request->items_02 as $item) {
+                        $totalDamageAmount += ($item['unit_price_02'] * $item['quantity_02']);
+                    }
+                }
+                $grandTotal = $totalItemAmount - (($request->discount ?? 0) + $totalDamageAmount);
+                $balance = $grandTotal -  $request->paid_amount ?? 0;
+                if ($balance == 0) {
+                    $paid_status = 'paid';
+                } else {
+                    $paid_status = 'partial';
+                }
 
                 // 4. Update Main Sale Record
                 $sale->update([
@@ -294,10 +322,11 @@ class SaleController extends Controller
                     'sr_id'          => $request->sr_id,
                     'delivery_id'    => $request->delivery_id,
                     'route_no'       => $request->route_no,
+                    'total_damage'   => $totalDamageAmount,
                     'total_amount'   => $grandTotal,
                     'discount'       => $request->discount ?? 0,
                     'paid_amount'    => $request->paid_amount ?? 0,
-                    'due_amount'     => $grandTotal - ($request->paid_amount ?? 0),
+                    'due_amount'     => $balance,
                     'remarks'        => $request->remarks,
                 ]);
 
@@ -321,15 +350,40 @@ class SaleController extends Controller
                         );
                     }
                 }
+                // 5.1. Create New Items & Update Stock using updateStock
+                if ($request->has('items_02')) {
+                    foreach ($request->items_02 as $itemData) {
+                        $sale->damageItems()->create([
+                            'product_id' => $itemData['product_id_02'],
+                            'unit_price' => $itemData['unit_price_02'],
+                            'quantity'   => $itemData['quantity_02'],
+                            'subtotal'   => $itemData['unit_price_02'] * $itemData['quantity_02'],
+                        ]);
+
+                        // Updated Stock Logic as requested
+                        \App\Services\StockService::updateStock(
+                            $itemData['product_id_02'],
+                            $itemData['quantity_02'],
+                            'return',
+                            $sale->invoice_no,
+                            "Updated Sale Invoice: {$sale->invoice_no}"
+                        );
+                    }
+                }
 
                 // 6. Create New Customer Due Allocation
                 //6. DSR Due / customer Due
-                \App\Models\SalesDueCustomer::create([
-                    'sale_id'     => $sale->id,
-                    'customer_id' => $request->delivery_id,
-                    'due_amount'  => $grandTotal - ($request->paid_amount ?? 0),
-                    'note'        => null,
-                ]);
+                if ($paid_status == 'paid') {
+                    //nothing
+                } else {
+                    \App\Models\SalesDueCustomer::create([
+                        'sale_id'     => $sale->id,
+                        'customer_id' => $request->delivery_id,
+                        'due_amount'  => $grandTotal - ($request->paid_amount ?? 0),
+                        'note'        => null,
+                        'status'        => $paid_status,
+                    ]);
+                }
             });
 
             return redirect()->route('sales.index')->with('success', 'Invoice and Stock updated successfully.');
@@ -359,6 +413,15 @@ class SaleController extends Controller
                     );
                 }
 
+                foreach ($sale->damageItems as $item) {
+                    \App\Services\StockService::reverseStock(
+                        $item->product_id,
+                        $item->quantity,
+                        'return',
+                        $sale->invoice_no
+                    );
+                }
+
                 // 2. Explicitly delete customer dues if migration doesn't have cascade delete
                 $sale->customerDues()->delete();
 
@@ -377,6 +440,12 @@ class SaleController extends Controller
 
             return redirect()->route('sales.index')->with('success', 'Sale deleted successfully.');
         } catch (\Exception $e) {
+
+            \Log::error('Invoice update failed', [
+                'error' => $e->getMessage(),
+                'stack' => $e->getTraceAsString()
+            ]);
+
             if (request()->ajax()) {
                 return response()->json([
                     'success' => false,
@@ -530,5 +599,85 @@ class SaleController extends Controller
         $selectedSr = \App\Models\Employee::find($srId);
 
         return view('sales.sr_sales', compact('sales', 'totalSalesAmount', 'totalCollection', 'totalDue', 'selectedSr', 'srs', 'start', 'end'));
+    }
+
+    // public function productSalesReport(Request $request)
+    // {
+    //     $start_date = $request->start_date ?? date('Y-m-01'); // Default to start of month
+    //     $end_date = $request->end_date ?? date('Y-m-d');
+
+    //     // Assuming you have a SaleItem or InvoiceItem model related to Product
+    //     $sales = SaleItem::with('product')
+    //         ->select(
+    //             'product_id',
+    //             DB::raw('SUM(quantity) as total_qty'),
+    //             DB::raw('SUM(subtotal) as total_revenue'),
+    //             DB::raw('AVG(unit_price) as avg_price')
+    //         )
+    //         ->whereHas('sale', function ($query) use ($start_date, $end_date) {
+    //             $query->whereBetween('sale_date', [$start_date, $end_date]);
+    //         })
+    //         ->groupBy('product_id')
+    //         ->orderBy('total_revenue', 'desc')
+    //         ->get();
+
+    //     return view('sales.product_sales', compact('sales', 'start_date', 'end_date'));
+    // }
+
+    public function productSalesReport(Request $request)
+    {
+        $start_date = $request->start_date ?? date('Y-m-01');
+        $end_date = $request->end_date ?? date('Y-m-d');
+
+        // 1. Get Sales Data (Subquery)
+        $salesData = SaleItem::join('sales', 'sale_items.sale_id', '=', 'sales.id')
+            ->select(
+                'product_id',
+                DB::raw('SUM(quantity) as total_sold_qty'),
+                DB::raw('SUM(subtotal) as total_sold_revenue'),
+                DB::raw('AVG(unit_price) as avg_price')
+            )
+            ->whereBetween('sales.sale_date', [$start_date, $end_date])
+            ->groupBy('product_id');
+
+        // 2. Get Damage Data (Subquery)
+        $damageData = SalesDamageItems::join('sales', 'sales_damage_items.sale_id', '=', 'sales.id')
+            ->select(
+                'product_id',
+                DB::raw('SUM(quantity) as total_damage_qty'),
+                // We calculate damage value based on the sub_total in the damage table
+                DB::raw('SUM(subtotal) as total_damage_revenue')
+            )
+            ->whereBetween('sales.sale_date', [$start_date, $end_date])
+            // If your damage table has a date, filter it here too
+            ->groupBy('product_id');
+
+        // 3. Final Report Join
+        $report = DB::table('products')
+            ->leftJoinSub($salesData, 'sales', function ($join) {
+                $join->on('products.id', '=', 'sales.product_id');
+            })
+            ->leftJoinSub($damageData, 'damages', function ($join) {
+                $join->on('products.id', '=', 'damages.product_id');
+            })
+            ->select(
+                'products.name',
+                DB::raw('COALESCE(sales.total_sold_qty, 0) as sold_qty'),
+                DB::raw('COALESCE(damages.total_damage_qty, 0) as damage_qty'),
+                DB::raw('(COALESCE(sales.total_sold_qty, 0) - COALESCE(damages.total_damage_qty, 0)) as net_qty'),
+                DB::raw('COALESCE(sales.avg_price, 0) as avg_price'),
+                DB::raw('COALESCE(sales.total_sold_revenue, 0) as sold_revenue'),
+                DB::raw('COALESCE(damages.total_damage_revenue, 0) as damage_revenue'),
+                // Net Revenue = Sold Revenue - Damage Revenue
+                DB::raw('(COALESCE(sales.total_sold_revenue, 0) - COALESCE(damages.total_damage_revenue, 0)) as net_revenue')
+            )
+            ->where(function ($query) {
+                $query->whereNotNull('sales.product_id')
+                    ->orWhereNotNull('damages.product_id');
+            })
+            ->orderBy('net_revenue', 'desc')
+            ->get();
+
+        return view('sales.product_sales', compact('report', 'start_date', 'end_date'));
     }
 }

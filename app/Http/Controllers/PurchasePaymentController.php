@@ -37,7 +37,21 @@ class PurchasePaymentController extends Controller
      */
     public function create()
     {
-        $companies = Company::all();
+        $companies = Company::withSum('purchases', 'total_amount') // Total of all bills
+            ->withSum('purchases_payments', 'amount') // Total of all payments made (from purchase_payments table)
+            ->get()
+            ->map(function ($company) {
+                $opening = (float)$company->opening_balance;
+
+                // Match the Laravel auto-generated names exactly:
+                $bills = (float)($company->purchases_sum_total_amount ?? 0);
+                $paid  = (float)($company->purchases_payments_sum_amount ?? 0);
+
+                // Formula: (Opening + Total Bills) - Total Payments
+                $company->calculated_due = ($opening + $bills) - $paid;
+
+                return $company;
+            });
         return view('purchase_payments.create', compact('companies'));
     }
 

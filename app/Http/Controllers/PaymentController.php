@@ -75,72 +75,150 @@ class PaymentController extends Controller
     }
 
     // AJAX: Get pending dues for a specific customer
+    // public function getPendingDues($customerId)
+    // {
+    //     $dues = SalesDueCustomer::with('sale')
+    //         ->where('customer_id', $customerId)
+    //         ->whereIn('status', ['unpaid', 'partial'])
+    //         ->orderBy('created_at', 'asc') // FIFO: Oldest first
+    //         ->get();
+
+    //     return response()->json($dues);
+    // }
+
     public function getPendingDues($customerId)
     {
-        $dues = SalesDueCustomer::with('sale')
-            ->where('customer_id', $customerId)
+        $customer = Employee::findOrFail($customerId);
+        $dues = SalesDueCustomer::with('sale')->where('customer_id', $customerId)
+            ->where('due_amount', '>', 0)
             ->whereIn('status', ['unpaid', 'partial'])
             ->orderBy('created_at', 'asc') // FIFO: Oldest first
             ->get();
 
-        return response()->json($dues);
+        $data = [];
+
+        // 1. Add Opening Balance as the first "Invoice"
+        if ($customer->opening_balance > 0) {
+            $data[] = [
+                'id' => 'opening', // Special ID
+                'invoice_no' => 'OPENING-BAL',
+                'due_amount' => $customer->opening_balance,
+                'paid_amount' => 0, // Track specifically if needed
+                'created_at' => $customer->created_at,
+                'note' => 'Initial outstanding balance'
+            ];
+        }
+
+        // 2. Add Actual Invoices
+        foreach ($dues as $due) {
+            $data[] = [
+                'id' => $due->id,
+                'invoice_no' => $due->sale->invoice_no,
+                'due_amount' => $due->due_amount,
+                'paid_amount' => $due->paid_amount,
+                'created_at' => $due->created_at,
+                'note' => $due->note
+            ];
+        }
+
+        return response()->json($data);
     }
+
 
     /**
      * Store a newly created resource in storage.
      */
+
+
     public function store(Request $request)
     {
-        // Validate inputs
+        // 1. Validate inputs (Updated to include advance and opening balance keys)
         $request->validate([
-            'customer_id'    => 'required|exists:customers,id',
-            'payment_date'   => 'required|date',
-            'payment_method' => 'required|string',
-            'amounts'        => 'required|array',
+            'customer_id'           => 'required|exists:employees,id',
+            'payment_date'          => 'required|date',
+            'payment_method'        => 'required|string',
+            'amounts'               => 'nullable|array', // Main invoices
+            'opening_balance_pay'   => 'nullable|numeric|min:0',
+            'advance_amount'        => 'nullable|numeric|min:0',
         ]);
 
         try {
             DB::transaction(function () use ($request) {
-                foreach ($request->amounts as $dueId => $payAmount) {
-                    // Only process rows where an amount was entered
-                    if ($payAmount && $payAmount > 0) {
+                $customer = Employee::findOrFail($request->customer_id);
 
-                        $dueRecord = SalesDueCustomer::with('sale')->findOrFail($dueId);
+                // --- A. HANDLE OPENING BALANCE PAYMENT ---
+                if ($request->filled('opening_balance_pay') && $request->opening_balance_pay > 0) {
+                    $payAmount = $request->opening_balance_pay;
 
-                        // 1. Create the Payment Ledger Entry
-                        Payment::create([
-                            'customer_id'           => $request->customer_id,
-                            'sales_due_customer_id' => $dueId,
-                            'amount'                => $payAmount,
-                            'payment_date'          => $request->payment_date,
-                            'payment_method'        => $request->payment_method,
-                            'transaction_no'        => $request->transaction_no,
-                            'note'                  => $request->note,
-                            'user_id'               => Auth::id(),
-                        ]);
+                    // // Create a generic payment record for the opening balance
+                    // Payment::create([
+                    //     'customer_id'    => $customer->id,
+                    //     'amount'         => $payAmount,
+                    //     'payment_date'   => $request->payment_date,
+                    //     'payment_method' => $request->payment_method,
+                    //     'transaction_no' => $request->transaction_no,
+                    //     'note'           => 'Paid towards Opening Balance: ' . $request->note,
+                    //     'user_id'        => Auth::id(),
+                    // ]);
 
-                        // 2. Update the SalesDueCustomer table (The specific person's debt)
-                        $dueRecord->paid_amount += $payAmount;
+                    // Deduct from customer's specific opening balance field
+                    $customer->decrement('opening_balance', $payAmount);
+                }
 
-                        // Set status based on math
-                        if ($dueRecord->paid_amount >= $dueRecord->due_amount) {
-                            $dueRecord->status = 'paid';
-                        } else {
-                            $dueRecord->status = 'partial';
+                // --- B. HANDLE SPECIFIC INVOICE PAYMENTS ---
+                if ($request->amounts) {
+                    foreach ($request->amounts as $dueId => $payAmount) {
+                        if ($payAmount && $payAmount > 0) {
+                            $dueRecord = SalesDueCustomer::with('sale')->findOrFail($dueId);
+
+                            // 1. Create Payment Entry
+                            Payment::create([
+                                'customer_id'           => $customer->id,
+                                'sales_due_customer_id' => $dueId,
+                                'amount'                => $payAmount,
+                                'payment_date'          => $request->payment_date,
+                                'payment_method'        => $request->payment_method,
+                                'transaction_no'        => $request->transaction_no,
+                                'note'                  => $request->note,
+                                'user_id'               => Auth::id(),
+                            ]);
+
+                            // 2. Update SalesDueCustomer (The sub-record)
+                            $dueRecord->increment('paid_amount', $payAmount);
+
+                            // Set status
+                            $newBalance = $dueRecord->due_amount - $dueRecord->paid_amount;
+                            $dueRecord->status = ($newBalance <= 0) ? 'paid' : 'partial';
+                            $dueRecord->save();
+
+                            // 3. Update the Parent Sale (The master invoice)
+                            $sale = $dueRecord->sale;
+                            $sale->increment('paid_amount', $payAmount);
+                            $sale->decrement('due_amount', $payAmount);
                         }
-                        $dueRecord->save();
-
-                        // 3. Update the Parent Sale table (The main invoice totals)
-                        // We use increment/decrement to ensure atomic database operations
-                        $sale = $dueRecord->sale;
-                        $sale->increment('paid_amount', $payAmount);
-                        $sale->decrement('due_amount', $payAmount);
                     }
                 }
+
+                // --- C. HANDLE ADVANCE PAYMENT (EXCESS) ---
+                // if ($request->filled('advance_amount') && $request->advance_amount > 0) {
+                //     $advance = $request->advance_amount;
+
+                //     Payment::create([
+                //         'customer_id'    => $customer->id,
+                //         'amount'         => $advance,
+                //         'payment_date'   => $request->payment_date,
+                //         'payment_method' => $request->payment_method,
+                //         'transaction_no' => $request->transaction_no,
+                //         'note'           => 'Excess/Advance Payment: ' . $request->note,
+                //         'user_id'        => Auth::id(),
+                //     ]);
+                // }
+
+
             });
 
             return redirect()->route('payments.create')
-                ->with('success', 'Payment processed. Invoices and customer dues have been updated.');
+                ->with('success', 'Full payment distribution completed successfully.');
         } catch (\Exception $e) {
             return back()->with('error', 'Payment failed: ' . $e->getMessage())->withInput();
         }

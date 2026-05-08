@@ -34,10 +34,9 @@
                                 <select name="company_id" id="company_id" class="form-select select2" required>
                                     <option value="">Search Company...</option>
                                     @foreach ($companies as $company)
-                                        <option value="{{ $company->id }}"
-                                            data-due="{{ $company->purchases->sum('due_amount') + $company->opening_balance }}">
-                                            {{ $company->name }} (Due:
-                                            TK{{ number_format($company->purchases->sum('due_amount') + $company->opening_balance, 2) }})
+                                        <option value="{{ $company->id }}" data-due="{{ $company->calculated_due }}">
+                                            {{ $company->name }}
+                                            (Due: TK {{ number_format($company->calculated_due, 2) }})
                                         </option>
                                     @endforeach
                                 </select>

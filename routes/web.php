@@ -55,6 +55,7 @@ Route::middleware(['auth'])->group(function () {
  Route::post('/sales-due-store', [SaleController::class, 'storeDueCustomer'])->name('sales.due.store');
  Route::get('/sales/company-sales', [SaleController::class, 'companySalesReport'])->name('sales.company-sales');
  Route::get('/sales/sr-sales', [SaleController::class, 'srSalesReport'])->name('sales.sr-sales');
+ Route::get('/sales/product-sales', [SaleController::class, 'productSalesReport'])->name('sales.product-sales');
  Route::resource('sales', SaleController::class);
  Route::get('/customer/{customerId}/purchased-products', [SalesReturnController::class, 'getPurchasedProducts']);
  Route::resource('sales_returns', SalesReturnController::class);

@@ -153,16 +153,17 @@
                             {{-- <li><a class="dropdown-item" href="/returns">Return</a></li> --}}
 
                             <li><a class="dropdown-item" href="/sales/sr-sales">SR Sales Report</a></li>
+                            <li><a class="dropdown-item" href="/sales/product-sales">Product Sales Report</a></li>
                             <li><a class="dropdown-item" href="/sales/company-sales">Company Sales Report</a></li>
                         </ul>
                     </li>
 
-                    <li class="nav-item">
+                    {{-- <li class="nav-item">
                         <a class="nav-link" href="/returns">
                             <!-- Settings icon with text -->
                             <i class="bi bi-box-seam me-1"></i> Return
                         </a>
-                    </li>
+                    </li> --}}
 
                     <li class="nav-item dropdown">
                         <a class="nav-link dropdown-toggle" href="#" data-bs-toggle="dropdown">
@@ -171,7 +172,7 @@
                         <ul class="dropdown-menu border-0 shadow-sm">
                             <li><a class="dropdown-item" href="/products">Product</a></li>
                             <li><a class="dropdown-item" href="/products/stock_value_report">Stock Value</a></li>
-                            <li><a class="dropdown-item" href="/products/damage_report">Product Damage</a></li>
+                            {{-- <li><a class="dropdown-item" href="/products/damage_report">Product Damage</a></li> --}}
                         </ul>
                     </li>
                     <li class="nav-item dropdown">
@@ -192,11 +193,20 @@
                     <li class="nav-item dropdown">
                         <a class="nav-link dropdown-toggle" href="#" data-bs-toggle="dropdown">
                             <!-- Settings icon with text -->
-                            <i class="bi bi-gear me-1"></i> Settings
+                            <i class="bi bi-person-workspace me-1"></i> HRM
                         </a>
                         <ul class="dropdown-menu border-0 shadow-sm">
                             <li><a class="dropdown-item" href="/employees">Employees</a></li>
                         </ul>
+                    </li>
+                    <li class="nav-item dropdown">
+                        <a class="nav-link dropdown-toggle" href="#" data-bs-toggle="dropdown">
+                            <!-- Settings icon with text -->
+                            <i class="bi bi-gear me-1"></i> Settings
+                        </a>
+                        {{-- <ul class="dropdown-menu border-0 shadow-sm">
+                            <li><a class="dropdown-item" href="/employees">Employees</a></li>
+                        </ul> --}}
                     </li>
                     {{-- <li class="nav-item">
                         <a class="nav-link" href="#"><i class="bi bi-map me-1"></i> Inventory</a>
@@ -282,6 +292,18 @@
 
 
     @stack('scripts')
+
+    @if (session('error'))
+        <script>
+            Swal.fire({
+                icon: 'error',
+                title: 'Error',
+                text: "{{ session('error') }}",
+                confirmButtonColor: '#d33'
+            });
+        </script>
+    @endif
+
 
 </body>
 

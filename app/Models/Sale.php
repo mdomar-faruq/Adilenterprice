@@ -16,6 +16,7 @@ class Sale extends Model
         'delivery_id',
         'sr_id',
         'route_no',
+        'total_damage',
         'total_amount',
         'discount',
         'paid_amount',
@@ -45,6 +46,10 @@ class Sale extends Model
     public function items()
     {
         return $this->hasMany(SaleItem::class, 'sale_id');
+    }
+    public function damageItems()
+    {
+        return $this->hasMany(SalesDamageItems::class, 'sale_id');
     }
 
     public function customerDues()

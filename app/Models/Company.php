@@ -18,6 +18,11 @@ class Company extends Model
         return $this->hasMany(purchases::class);
     }
 
+    public function purchases_payments()
+    {
+        return $this->hasMany(PurchasePayment::class, 'company_id');
+    }
+
     public function products()
     {
         return $this->hasMany(Product::class, 'company_id');

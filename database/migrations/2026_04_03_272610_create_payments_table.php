@@ -15,6 +15,7 @@ return new class extends Migration
             $table->id();
             $table->foreignId('customer_id')->constrained();
             $table->foreignId('sales_due_customer_id')
+                ->nullable()
                 ->constrained('sales_due_customers')
                 ->onDelete('cascade');
             $table->decimal('amount', 15, 2);
