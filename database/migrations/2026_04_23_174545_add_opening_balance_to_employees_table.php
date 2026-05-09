@@ -15,6 +15,7 @@ return new class extends Migration
             // Adding the column. We use decimal for financial accuracy.
             // default(0) ensures existing employees start with 0 balance.
             $table->decimal('opening_balance', 15, 2)->default(0)->after('phone');
+            $table->decimal('opening_paid', 15, 2)->default(0)->after('phone');
         });
     }
 
@@ -25,6 +26,7 @@ return new class extends Migration
     {
         Schema::table('employees', function (Blueprint $table) {
             $table->dropColumn('opening_balance');
+            $table->dropColumn('opening_paid');
         });
     }
 };

@@ -103,7 +103,7 @@ class PaymentController extends Controller
                 'id' => 'opening', // Special ID
                 'invoice_no' => 'OPENING-BAL',
                 'due_amount' => $customer->opening_balance,
-                'paid_amount' => 0, // Track specifically if needed
+                'paid_amount' => $customer->opening_paid,
                 'created_at' => $customer->created_at,
                 'note' => 'Initial outstanding balance'
             ];
@@ -151,18 +151,18 @@ class PaymentController extends Controller
                     $payAmount = $request->opening_balance_pay;
 
                     // // Create a generic payment record for the opening balance
-                    // Payment::create([
-                    //     'customer_id'    => $customer->id,
-                    //     'amount'         => $payAmount,
-                    //     'payment_date'   => $request->payment_date,
-                    //     'payment_method' => $request->payment_method,
-                    //     'transaction_no' => $request->transaction_no,
-                    //     'note'           => 'Paid towards Opening Balance: ' . $request->note,
-                    //     'user_id'        => Auth::id(),
-                    // ]);
+                    Payment::create([
+                        'customer_id'    => $customer->id,
+                        'amount'         => $payAmount,
+                        'payment_date'   => $request->payment_date,
+                        'payment_method' => $request->payment_method,
+                        'transaction_no' => $request->transaction_no,
+                        'note'           => 'Paid towards Opening Balance: ' . $request->note,
+                        'user_id'        => Auth::id(),
+                    ]);
 
                     // Deduct from customer's specific opening balance field
-                    $customer->decrement('opening_balance', $payAmount);
+                    $customer->increment('opening_paid', $payAmount);
                 }
 
                 // --- B. HANDLE SPECIFIC INVOICE PAYMENTS ---
@@ -250,32 +250,40 @@ class PaymentController extends Controller
     public function destroy($id)
     {
         // Find the payment with related records
-        $payment = Payment::with('dueRecord.sale')->findOrFail($id);
+        $payment = Payment::with('dueRecord.sale', 'customer')->findOrFail($id);
 
         try {
             DB::transaction(function () use ($payment) {
-                $dueRecord = $payment->dueRecord;
-
-                // 1. Reverse Math in the 'sales_due_customers' table
-                $dueRecord->paid_amount -= $payment->amount;
-
-                // Recalculate the status based on the new balance
-                if ($dueRecord->paid_amount <= 0) {
-                    $dueRecord->status = 'unpaid';
-                    $dueRecord->paid_amount = 0; // Prevent negative numbers
+                if ($payment->sales_due_customer_id == null) {
+                    //opening payment
+                    $payment->customer->decrement('opening_paid', $payment->amount);
+                    $payment->delete();
                 } else {
-                    $dueRecord->status = 'partial';
-                }
-                $dueRecord->save();
 
-                // 2. Reverse Math in the 'sales' table (The Master Invoice)
-                if ($dueRecord->sale) {
-                    $dueRecord->sale->decrement('paid_amount', $payment->amount);
-                    $dueRecord->sale->increment('due_amount', $payment->amount);
-                }
 
-                // 3. Delete the payment record itself
-                $payment->delete();
+                    $dueRecord = $payment->dueRecord;
+
+                    // 1. Reverse Math in the 'sales_due_customers' table
+                    $dueRecord->paid_amount -= $payment->amount;
+
+                    // Recalculate the status based on the new balance
+                    if ($dueRecord->paid_amount <= 0) {
+                        $dueRecord->status = 'unpaid';
+                        $dueRecord->paid_amount = 0; // Prevent negative numbers
+                    } else {
+                        $dueRecord->status = 'partial';
+                    }
+                    $dueRecord->save();
+
+                    // 2. Reverse Math in the 'sales' table (The Master Invoice)
+                    if ($dueRecord->sale) {
+                        $dueRecord->sale->decrement('paid_amount', $payment->amount);
+                        $dueRecord->sale->increment('due_amount', $payment->amount);
+                    }
+
+                    // 3. Delete the payment record itself
+                    $payment->delete();
+                }
             });
 
             return response()->json([

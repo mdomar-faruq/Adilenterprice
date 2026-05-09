@@ -12,6 +12,7 @@ class Employee extends Model
         'email',
         'phone',
         'opening_balance',
+        'opening_paid',
         'designation',
         'salary',
         'joining_date',

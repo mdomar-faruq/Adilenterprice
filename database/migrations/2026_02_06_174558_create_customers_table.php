@@ -19,6 +19,7 @@ return new class extends Migration
             $table->text('address')->nullable();
             $table->decimal('credit_limit', 15, 2)->default(0);
             $table->decimal('opening_balance', 15, 2)->default(0);
+            $table->decimal('opening_paid', 15, 2)->default(0);
             $table->boolean('is_active')->default(true);
             $table->timestamps();
         });
