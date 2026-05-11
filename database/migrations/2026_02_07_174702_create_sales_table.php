@@ -18,8 +18,8 @@ return new class extends Migration
             $table->foreignId('delivery_id')->constrained('employees');
             $table->foreignId('sr_id')->constrained('employees');
             $table->string('route_no');
-            $table->decimal('total_amount', 15, 2)->default(0);
             $table->decimal('discount', 15, 2)->default(0);
+            $table->decimal('total_amount', 15, 2)->default(0);
             $table->decimal('paid_amount', 15, 2)->default(0);
             $table->decimal('due_amount', 15, 2)->default(0);
             $table->string('payment_status')->default('pending'); // pending, partial, paid

@@ -109,6 +109,8 @@ class SaleController extends Controller
             $sale = DB::transaction(function () use ($request) {
 
                 $calculatedSubtotal = 0;
+                $calculatedExtra = 0;
+                $totalDamageAmount = 0;
                 $itemsToProcess = [];
 
                 // 2. Initial Loop: Validate Stock & Fetch Products
@@ -133,11 +135,22 @@ class SaleController extends Controller
                     ];
                 }
 
+                // 2.1 damege total
+                if ($request->has('items_02')) {
+                    foreach ($request->items_02 as $item) {
+                        $totalDamageAmount += ($item['unit_price_02'] * $item['quantity_02']);
+                    }
+                }
+
+
+
                 // 3. Financial Calculations
                 $discount    = (float) ($request->discount ?? 0);
-                $totalAmount = round($calculatedSubtotal - $discount, 2);
+                $targetAmount    = (float) ($request->targetAmount ?? 0);
+                $totalAmount = round($calculatedSubtotal - ($discount + $totalDamageAmount), 2);
+                $calculatedExtra = $totalAmount - $targetAmount;
                 $paidAmount  = $request->paid_amount ?? 0;
-                $dueAmount   = $totalAmount - $paidAmount;
+                $dueAmount   = $targetAmount - $paidAmount;
 
 
                 // 4. Create the Master Sale (Removed customer_id, Added Delivery/SR/Route)
@@ -147,8 +160,11 @@ class SaleController extends Controller
                     'sr_id'          => $request->sr_id,
                     'route_no'       => $request->route_no,
                     'sale_date'      => $request->sale_date,
-                    'total_amount'   => $totalAmount,
                     'discount'       => $discount,
+                    'total_amount'   => $totalAmount,
+                    'total_damage'   => $totalDamageAmount,
+                    'target_amount'   => $targetAmount,
+                    'extra_amount'   => $calculatedExtra,
                     'paid_amount'    => $paidAmount,
                     'due_amount'     => $dueAmount,
                     'payment_status' => 'pending',
@@ -169,6 +185,27 @@ class SaleController extends Controller
                         $sale->invoice_no,
                         "Sale recorded: {$sale->invoice_no}"
                     );
+                }
+
+                // 5.1. Create New Items & Update Stock using updateStock
+                if ($request->has('items_02')) {
+                    foreach ($request->items_02 as $itemData) {
+                        $sale->damageItems()->create([
+                            'product_id' => $itemData['product_id_02'],
+                            'unit_price' => $itemData['unit_price_02'],
+                            'quantity'   => $itemData['quantity_02'],
+                            'subtotal'   => $itemData['unit_price_02'] * $itemData['quantity_02'],
+                        ]);
+
+                        // Updated Stock Logic as requested
+                        \App\Services\StockService::updateStock(
+                            $itemData['product_id_02'],
+                            $itemData['quantity_02'],
+                            'return',
+                            $sale->invoice_no,
+                            "Updated Sale Invoice: {$sale->invoice_no}"
+                        );
+                    }
                 }
 
                 //6. DSR Due / customer Due
@@ -298,6 +335,7 @@ class SaleController extends Controller
                 // 3. Calculate Financials
                 $totalItemAmount = 0;
                 $totalDamageAmount = 0;
+                $extraAmount = 0;
                 if ($request->has('items')) {
                     foreach ($request->items as $item) {
                         $totalItemAmount += ($item['unit_price'] * $item['quantity']);
@@ -309,7 +347,10 @@ class SaleController extends Controller
                     }
                 }
                 $grandTotal = $totalItemAmount - (($request->discount ?? 0) + $totalDamageAmount);
-                $balance = $grandTotal -  $request->paid_amount ?? 0;
+                $targetAmount = ($request->targetAmount ?? 0);
+                $extraAmount = $grandTotal - $targetAmount;
+                $balance = $targetAmount -  $request->paid_amount ?? 0;
+
                 if ($balance == 0) {
                     $paid_status = 'paid';
                 } else {
@@ -324,6 +365,8 @@ class SaleController extends Controller
                     'route_no'       => $request->route_no,
                     'total_damage'   => $totalDamageAmount,
                     'total_amount'   => $grandTotal,
+                    'target_amount'   => $targetAmount,
+                    'extra_amount'   => $extraAmount,
                     'discount'       => $request->discount ?? 0,
                     'paid_amount'    => $request->paid_amount ?? 0,
                     'due_amount'     => $balance,

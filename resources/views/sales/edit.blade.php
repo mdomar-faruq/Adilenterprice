@@ -200,21 +200,42 @@
                         </div>
                         <div class="card-body p-4">
                             <div class="d-flex justify-content-between align-items-center mb-3">
+                                <span class="fw-bold text-dark">Sub-Total</span>
+                                <h4 class="text-primary fw-bold mb-0">TK <span id="display_subtotal"></span>
+                                </h4>
+                            </div>
+
+                            <div class="d-flex justify-content-between align-items-center mb-3">
                                 <span class="text-muted">Total Discount</span>
                                 <div class="w-50">
                                     <input type="number" step="0.01" name="discount" id="discount"
                                         class="form-control text-end" value="{{ $sale->discount }}">
                                 </div>
                             </div>
+
                             <div class="d-flex justify-content-between align-items-center mb-3">
                                 <span class="fw-bold text-warning">Total Damage</span>
                                 <h4 class="text-primary text-warning fw-bold mb-0">TK <span
-                                        id="display_total_damage">{{ number_format($sale->total_damage, 2) }}</span></h4>
+                                        id="display_total_damage">{{ number_format($sale->total_damage, 2) }}</span>
+                                </h4>
                             </div>
                             <div class="d-flex justify-content-between align-items-center mb-3">
                                 <span class="fw-bold">Grand Total</span>
                                 <h4 class="text-primary fw-bold mb-0">TK <span
                                         id="display_total">{{ number_format($sale->total_amount, 2) }}</span></h4>
+                            </div>
+                            <div class="d-flex justify-content-between align-items-center mb-3">
+                                <span class="text-success fw-bold">Target Amount</span>
+                                <div class="w-50">
+                                    <input type="number" step="0.01" name="targetAmount" id="targetAmount"
+                                        class="form-control border-success text-end fw-bold"
+                                        value="{{ $sale->target_amount }}">
+                                </div>
+                            </div>
+                            <div class="d-flex justify-content-between align-items-center mb-3">
+                                <span class="fw-bold">+Extra DSR</span>
+                                <h4 class="text-primary fw-bold mb-0">TK <span
+                                        id="extraDsr">{{ number_format($sale->extra_amount, 2) }}</span></h4>
                             </div>
                             <div class="d-flex justify-content-between align-items-center mb-3">
                                 <span class="text-success fw-bold">Paid Amount</span>
@@ -247,6 +268,7 @@
 @push('scripts')
     <script>
         $(document).ready(function() {
+            calculateInvoiceTotals();
             let itemIndex = {{ $sale->items->count() }};
 
             function initSelect2() {
@@ -309,6 +331,7 @@
             <td><input type="text" class="form-control subtotal_02 fw-bold" readonly value="0.00"></td>
             <td class="text-center pe-4"><button type="button" class="btn btn-outline-danger btn-sm border-0 remove-item_02"><i class="bi bi-trash"></i></button></td>
         </tr>`;
+
                 $('#items-table_02 tbody').append(row);
                 initSelect2();
                 itemIndex++;
@@ -426,7 +449,7 @@
                 calculateInvoiceTotals();
             });
 
-            $(document).on('input', '.unit-price, #discount, #paid_amount', function() {
+            $(document).on('input', '.unit-price, #discount, #paid_amount,#targetAmount', function() {
                 calculateInvoiceTotals();
             });
 
@@ -451,6 +474,7 @@
             function calculateInvoiceTotals() {
                 let subtotalAccumulator = 0;
                 let subtotalDamage_02 = 0;
+                let extraDsr = 0;
                 $('.quantity').each(function() {
                     let tr = $(this).closest('tr');
                     let price = parseFloat(tr.find('.unit-price').val()) || 0;
@@ -470,11 +494,21 @@
                 });
 
                 let disc = parseFloat($('#discount').val()) || 0;
+                let targetAmount = parseFloat($('#targetAmount').val()) || 0;
                 let final = subtotalAccumulator - (disc + subtotalDamage_02);
+                extraDsr = final - targetAmount;
                 let paid = parseFloat($('#paid_amount').val()) || 0;
-                let due = final - paid;
+                let due = targetAmount - paid;
+
+                $('#display_subtotal').text(subtotalAccumulator.toLocaleString(undefined, {
+                    minimumFractionDigits: 2
+                }));
 
                 $('#display_total_damage').text(subtotalDamage_02.toLocaleString(undefined, {
+                    minimumFractionDigits: 2
+                }));
+
+                $('#extraDsr').text(extraDsr.toLocaleString(undefined, {
                     minimumFractionDigits: 2
                 }));
 

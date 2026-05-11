@@ -18,6 +18,8 @@ class Sale extends Model
         'route_no',
         'total_damage',
         'total_amount',
+        'target_amount',
+        'extra_amount',
         'discount',
         'paid_amount',
         'due_amount',
