@@ -474,9 +474,11 @@
                 let discount = parseFloat($('#globalDiscount').val()) || 0;
                 let grandTotal = Math.max(0, subtotal - (discount + subtotalDamage_02));
                 let targetAmount = parseFloat($('#targetAmount').val()) || 0;
-                extraDsr = grandTotal - targetAmount;
+                if(targetAmount > 0){
+                    extraDsr = grandTotal - targetAmount;
+                }
                 let paid = parseFloat($('#paidAmount').val()) || 0;
-                let due = targetAmount - paid;
+                let due = grandTotal - paid;
 
                 $('#extraDsrDisplay').text(extraDsr.toLocaleString(undefined, {
                     minimumFractionDigits: 2

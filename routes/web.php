@@ -15,6 +15,7 @@ use App\Http\Controllers\PurchasePaymentController;
 use App\Http\Controllers\SalesReturnController;
 use App\Http\Controllers\AccountSettingController;
 use App\Http\Controllers\ProductReturnController;
+use App\Http\Controllers\ReportController;
 
 Auth::routes();
 
@@ -70,6 +71,27 @@ Route::middleware(['auth'])->group(function () {
  Route::get('/accounts', [AccountSettingController::class, 'index'])->name('accounts.index');
  Route::post('/accounts/update-opening', [AccountSettingController::class, 'updateOpening'])->name('accounts.updateOpening');
 
+ //--------------------------Report------------------------------------------------
+ Route::prefix('report')->group(function () {
+  Route::get('/product_stock', [ReportController::class, 'productStock'])->name('reports.product_stock');
+ });
+
+
  //--------------------------Setting------------------------------------------------
  Route::resource('employees', EmployeeController::class);
 });
+
+
+
+// use Illuminate\Support\Facades\DB;
+
+// Route::get('/abc', function () {
+//  $m_product = DB::table('products676767')->get();
+//  foreach ($m_product as $row) {
+
+//   DB::table('products')->where('id', $row->id)->update(['opening_stock' => $row->stock]);
+//  }
+
+
+//  return "success";
+// });

@@ -148,9 +148,11 @@ class SaleController extends Controller
                 $discount    = (float) ($request->discount ?? 0);
                 $targetAmount    = (float) ($request->targetAmount ?? 0);
                 $totalAmount = round($calculatedSubtotal - ($discount + $totalDamageAmount), 2);
-                $calculatedExtra = $totalAmount - $targetAmount;
+                if ($targetAmount > 0) {
+                    $calculatedExtra = $totalAmount - $targetAmount;
+                }
                 $paidAmount  = $request->paid_amount ?? 0;
-                $dueAmount   = $targetAmount - $paidAmount;
+                $dueAmount   = $totalAmount - $paidAmount;
 
 
                 // 4. Create the Master Sale (Removed customer_id, Added Delivery/SR/Route)
@@ -348,8 +350,10 @@ class SaleController extends Controller
                 }
                 $grandTotal = $totalItemAmount - (($request->discount ?? 0) + $totalDamageAmount);
                 $targetAmount = ($request->targetAmount ?? 0);
-                $extraAmount = $grandTotal - $targetAmount;
-                $balance = $targetAmount -  $request->paid_amount ?? 0;
+                if ($targetAmount > 0) {
+                    $extraAmount = $grandTotal - $targetAmount;
+                }
+                $balance = $grandTotal -  $request->paid_amount ?? 0;
 
                 if ($balance == 0) {
                     $paid_status = 'paid';

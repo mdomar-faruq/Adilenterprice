@@ -496,9 +496,11 @@
                 let disc = parseFloat($('#discount').val()) || 0;
                 let targetAmount = parseFloat($('#targetAmount').val()) || 0;
                 let final = subtotalAccumulator - (disc + subtotalDamage_02);
-                extraDsr = final - targetAmount;
+                if(targetAmount>0){
+                    extraDsr = final - targetAmount;
+                }
                 let paid = parseFloat($('#paid_amount').val()) || 0;
-                let due = targetAmount - paid;
+                let due = final - paid;
 
                 $('#display_subtotal').text(subtotalAccumulator.toLocaleString(undefined, {
                     minimumFractionDigits: 2
