@@ -21,6 +21,8 @@ Auth::routes();
 
 Route::middleware(['auth'])->group(function () {
  Route::get('/', [HomeController::class, 'index'])->name('home');
+ Route::get('/v1/dashboard', [HomeController::class, 'dashboardOne']);
+ Route::get('/v1/dashboard/data', [HomeController::class, 'dashboardOneData'])->name('dashboardOne.data');
  Route::get('/dashboard/data/{period}', [HomeController::class, 'getDashboardData']);
 
  //--------------------------Inventory------------------------------------------------

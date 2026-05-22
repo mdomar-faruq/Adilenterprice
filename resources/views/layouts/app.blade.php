@@ -133,7 +133,7 @@
             <div class="collapse navbar-collapse" id="mainNav">
                 <ul class="navbar-nav me-auto mb-2 mb-lg-0">
                     <li class="nav-item">
-                        <a class="nav-link active" href="/"><i class="bi bi-house-door me-1"></i> Home</a>
+                        <a class="nav-link active" href="/"><i class="bi bi-house-door me-1"></i>Dashboard</a>
                     </li>
                     <li class="nav-item dropdown">
                         <a class="nav-link dropdown-toggle" href="#" data-bs-toggle="dropdown">
@@ -205,15 +205,15 @@
                             <li><a class="dropdown-item" href="/employees">Employees</a></li>
                         </ul>
                     </li>
-                    <li class="nav-item dropdown">
+                    {{-- <li class="nav-item dropdown">
                         <a class="nav-link dropdown-toggle" href="#" data-bs-toggle="dropdown">
                             <!-- Settings icon with text -->
                             <i class="bi bi-gear me-1"></i> Settings
                         </a>
-                        {{-- <ul class="dropdown-menu border-0 shadow-sm">
+                        <ul class="dropdown-menu border-0 shadow-sm">
                             <li><a class="dropdown-item" href="/employees">Employees</a></li>
-                        </ul> --}}
-                    </li>
+                        </ul>
+                    </li> --}}
                     {{-- <li class="nav-item">
                         <a class="nav-link" href="#"><i class="bi bi-map me-1"></i> Inventory</a>
                     </li> --}}

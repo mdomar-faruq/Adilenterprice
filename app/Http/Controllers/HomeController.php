@@ -2,10 +2,14 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\AccountSetting;
 use App\Models\Sale;
 use App\Models\purchases;
 use App\Models\Expense;
 use App\Models\Customer;
+use App\Models\Employee;
+use App\Models\Product;
+use App\Models\PurchasePayment;
 use Illuminate\Http\Request;
 use Carbon\Carbon;
 use DB;
@@ -30,9 +34,99 @@ class HomeController extends Controller
      */
     public function index()
     {
-        return view('home');
+        return view('dashboard.index');
+        // return view('home');
     }
 
+    public function dashboardOne()
+    {
+        return view('dashboard.index');
+    }
+
+    public function dashboardOneData()
+    {
+        $currentAccountAmount = 0;
+        $currentStockValue = 0;
+        $totalDsrDue = 0;
+        $currentCompanyDue = 0;
+        $overallSales = 0;
+        $overallPurchase = 0;
+        $overallExpense = 0;
+        $salesDamageAmount = 0;
+
+        // =========================================================================
+        // STEP-BY-STEP CALCULATION: Current Account Balance (Liquid Cash)
+        // =========================================================================
+
+        // 1. Get Opening Balance (Fallback safely if no record exists)
+        $settings = AccountSetting::first() ?? new AccountSetting(['opening_balance' => 0]);
+        $opening = (float) $settings->opening_balance;
+
+        // 2. Outgoing Money (-)
+        $expenses = (float) Expense::sum('amount');
+        $paymentVouchers = (float) PurchasePayment::sum('amount'); // Cash paid out to suppliers
+        $totalOutgoing = $expenses + $paymentVouchers;
+
+        // 3. Incoming Money (+)
+        $sales = (float) Sale::sum('paid_amount'); // Actual cash collected from sales
+        $dsr_opening = (float) Employee::sum('opening_paid'); // Actual cash collected from DSR staff
+        $totalIncoming = $sales + $dsr_opening;
+
+        // 4. Calculate Final Liquid Cash Balance
+        // Formula: Opening + (Incoming) - (Outgoing)
+        $currentAccountAmount = $opening + $totalIncoming - $totalOutgoing;
+        // =========================================================================
+        // STEP 2: Current Product Stock Value (Asset Value Logic)
+        // =========================================================================
+        // This aggregates matching values directly at the DB level for blazing-fast speed
+        $currentStockValue = (float) Product::where('valid', 1)
+            ->sum(\DB::raw('stock * purchase_price'));
+
+        // =========================================================================
+        // STEP 3: Total DSR Due (Receivables Logic)
+        // =========================================================================
+        // Instead of looping, we run high-speed global sum queries on index columns
+        $totalDsrDue = (float) \DB::table('employees')->sum('opening_balance')
+            + (float) \DB::table('sales_due_customers')->sum('due_amount')
+            - (float) \DB::table('payments')->sum('amount');
+
+
+        // =========================================================================
+        // STEP 4: Current Company Due (Payables Logic)
+        // =========================================================================
+        $lifetimePurchases = (float) \DB::table('purchases')->sum('total_amount');
+
+        $currentCompanyDue = (float) \DB::table('companies')->sum('opening_balance')
+            + $lifetimePurchases
+            - $paymentVouchers; // Reusing $paymentVouchers sum from Step 1
+
+        // =========================================================================
+        // REMAINING TRADE STATEMENT FIELDS
+        // =========================================================================
+        $overallSales         = (float) Sale::sum('total_amount');
+        $overallPurchase         = $lifetimePurchases;
+        $overallExpense         = $expenses;
+
+        $salesDamageAmount = (float) \DB::table('sales_damage_items')
+            ->join('products', 'sales_damage_items.product_id', '=', 'products.id')
+            ->sum(\DB::raw('sales_damage_items.quantity * products.purchase_price'));
+
+
+        return response()->json([
+            'currentAccountAmount' => (float) $currentAccountAmount,
+            'currentStockValue'    => (float) $currentStockValue,
+            'totalDsrDue'          => (float) $totalDsrDue,
+            'currentCompanyDue'    => (float) $currentCompanyDue,
+            'overallSales'         => (float) $overallSales,
+            'overallPurchase'      => (float) $overallPurchase,
+            'overallExpense'       => (float) $overallExpense,
+            'salesDamageAmount'    => (float) $salesDamageAmount,
+            'timestamp'            => now()->format('d M, Y h:i A')
+        ]);
+    }
+
+
+    //this part test
     public function getDashboardData($period)
     {
         $now = Carbon::now();
