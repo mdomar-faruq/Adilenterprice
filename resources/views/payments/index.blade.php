@@ -9,7 +9,8 @@
                         <ol class="breadcrumb mb-1 align-items-center">
                             <li class="breadcrumb-item"><a href="/" class="text-muted"><i
                                         class="bi bi-house-door me-2"></i>Home</a></li>
-                            <li class="breadcrumb-item active fw-semibold text-primary">Money Receipt</li>
+                            <li class="breadcrumb-item active fw-semibold text-primary">DSR
+                                Payment Collection</li>
                         </ol>
                     </nav>
                     <h2 class="h3 fw-bold text-gray-800 mb-0">Money Receipt History</h2>
@@ -18,7 +19,7 @@
                     <a href="{{ route('payments.create') }}"
                         class="btn btn-gradient text-white rounded-pill px-4 py-2 d-flex align-items-center">
                         <i class="bi bi-plus-circle-fill me-2"></i>
-                        <span class="fw-bold">New Money Receipt</span>
+                        <span class="fw-bold">New DSR Payment Collection</span>
                     </a>
                 </div>
             </div>

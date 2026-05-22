@@ -8,6 +8,7 @@ use App\Models\Payment;
 use App\Models\PurchasePayment;
 use App\Models\purchases;
 use App\Models\Sale;
+use App\Models\Employee;
 use Illuminate\Http\Request;
 
 class AccountSettingController extends Controller
@@ -31,15 +32,19 @@ class AccountSettingController extends Controller
         // $dueSales = Sale::sum('due_amount'); // Only use due amount for cash flow
         // $customerPayments = Payment::sum('amount'); // Collections from previous dues
 
+        // 3.1 Incoming Money (+)
+        $dsr_opening = Employee::sum('opening_paid');
+
         // 4. Calculate Final Balance
         // Formula: Opening + (Incoming) - (Outgoing)
-        $currentBalance = $opening + $sales - ($expenses + $paymentVouchers);
+        $currentBalance = $opening + $sales + $dsr_opening - ($expenses + $paymentVouchers);
 
         return view('accounts.index', compact(
             'opening',
             'expenses',
             'paymentVouchers',
             'sales',
+            'dsr_opening',
             'currentBalance'
         ));
     }

@@ -4,6 +4,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="csrf-token" content="{{ csrf_token() }}">
     <title>AdilEnterprice</title>
     <link href="{{ asset('css/bootstrap_5_3.css') }}" rel="stylesheet">
     <link href="{{ asset('css/bootstrap_icon_5_3.css') }}" rel="stylesheet">
@@ -141,6 +142,7 @@
                         <ul class="dropdown-menu border-0 shadow-sm">
                             <li><a class="dropdown-item" href="/companies">Company</a></li>
                             <li><a class="dropdown-item" href="/purchases">Purchase</a></li>
+                            <li><a class="dropdown-item" href="/report/company_summary">Company Balance Summary</a></li>
                         </ul>
                     </li>
                     <li class="nav-item dropdown">
@@ -152,6 +154,7 @@
                             <li><a class="dropdown-item" href="/sales">Sales</a></li>
                             {{-- <li><a class="dropdown-item" href="/returns">Return</a></li> --}}
 
+                            <li><a class="dropdown-item" href="/report/dsr_sales">DSR Sales Report</a></li>
                             <li><a class="dropdown-item" href="/sales/sr-sales">SR Sales Report</a></li>
                             <li><a class="dropdown-item" href="/sales/product-sales">Product Sales Report</a></li>
                             <li><a class="dropdown-item" href="/sales/company-sales">Company Sales Report</a></li>
@@ -181,10 +184,13 @@
 
                         </a>
                         <ul class="dropdown-menu border-0 shadow-sm">
-                            <li><a class="dropdown-item" href="/dsr/ledger">DSR Ledger</a></li>
-                            <li><a class="dropdown-item" href="/payments/create">Money Receipt</a></li>
-                            <li><a class="dropdown-item" href="/purchase_payments/create">Payment Voucher</a></li>
+                            <li><a class="dropdown-item" href="/dsr_opening">DSR Opening</a></li>
+                            <li><a class="dropdown-item" href="/report/all_dsr_due">All DSR Due Report</a></li>
+                            <li><a class="dropdown-item" href="/payments/create">DSR Payment Collection</a></li>
+                            <li><a class="dropdown-item" href="/purchase_payments/create">Company Payment Voucher</a>
+                            </li>
                             <li><a class="dropdown-item" href="/expenses">Expenses</a></li>
+                            <li><a class="dropdown-item" href="/report/expense">Expenses Report</a></li>
                             <li><a class="dropdown-item" href="/accounts">Accounts</a></li>
                             <li><a class="dropdown-item" href="/accounts/profit-loss-report">Profit & Loss
                                     Statement</a></li>

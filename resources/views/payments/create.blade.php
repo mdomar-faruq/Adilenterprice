@@ -4,24 +4,41 @@
     <div class="container-fluid py-4">
         <div class="row justify-content-center">
             <div class="col-xl-10">
-                <!-- Header Section -->
-                <div class="row align-items-center mb-4">
-                    <div class="col">
-                        <nav aria-label="breadcrumb">
-                            <ol class="breadcrumb mb-1">
-                                <li class="breadcrumb-item"><a href="/" class="text-decoration-none text-muted">Home</a>
-                                </li>
-                                <li class="breadcrumb-item active fw-semibold text-primary">Money Receipt</li>
-                            </ol>
-                        </nav>
-                        <h4 class="mb-0 fw-bold text-dark">DSR Payment Collection</h4>
-                    </div>
-                    <div class="col-auto">
-                        <a href="{{ route('payments.index') }}" class="btn btn-outline-primary rounded-pill px-4">
-                            <i class="bi bi-arrow-left me-2"></i>Back to List
-                        </a>
+                {{-- Header Section --}}
+                <div class="page-header mb-4">
+                    <div class="row align-items-center">
+                        {{-- Left Side: Breadcrumbs --}}
+                        <div class="col">
+                            <nav aria-label="breadcrumb">
+                                <ol class="breadcrumb mb-0 align-items-center">
+                                    <li class="breadcrumb-item">
+                                        <a href="/"
+                                            class="text-decoration-none text-muted d-inline-flex align-items-center">
+                                            <i class="bi bi-house-door me-2"></i><span>Home</span>
+                                        </a>
+                                    </li>
+                                    <li class="breadcrumb-item">
+                                        <a href="{{ route('payments.index') }}" class="text-decoration-none text-muted">DSR
+                                            Payment Collection</a>
+                                    </li>
+                                    <li class="breadcrumb-item active fw-semibold text-primary" aria-current="page">
+                                        Create
+                                    </li>
+                                </ol>
+                            </nav>
+                        </div>
+
+                        {{-- Right Side: Back to Index Action Button --}}
+                        <div class="col-auto">
+                            <a href="{{ route('payments.index') }}"
+                                class="btn btn-primary d-inline-flex align-items-center shadow-sm px-3 rounded-pill">
+                                <i class="bi bi-arrow-left me-2"></i>
+                                <span>Back to Index</span>
+                            </a>
+                        </div>
                     </div>
                 </div>
+
 
                 <form action="{{ route('payments.store') }}" method="POST" id="payment-form">
                     @csrf
@@ -30,7 +47,7 @@
                         <div class="col-lg-8">
                             <div class="card border-0 shadow-sm mb-4">
                                 <div class="card-body p-4">
-                                    <h6 class="fw-bold mb-3 text-uppercase small ls-1 text-primary">1. Collection Details
+                                    <h6 class="fw-bold mb-3 text-uppercase small ls-1 text-primary">1.DSR Payment Collection
                                     </h6>
                                     <div class="row g-3">
                                         <div class="col-md-6">
@@ -117,7 +134,7 @@
 
                         <!-- Right Column: Summary Card -->
                         <div class="col-lg-4">
-                            <div class="card border-0 shadow-sm sticky-top" style="top: 20px;">
+                            <div class="card border-1 shadow-sm" style="top: 20px;">
                                 <div class="card-body p-4 text-center">
                                     <div class="mb-4">
                                         <div class="display-6 fw-bold text-dark" id="display_total_collection">0.00</div>
@@ -191,6 +208,54 @@
             }
 
             // 2. Load Dues when Customer is selected
+            // $('#customer_id').change(function() {
+            //     let customerId = $(this).val();
+            //     if (!customerId) {
+            //         $('#due-container, #advance-wrapper').hide();
+            //         return;
+            //     }
+
+            //     $('#due-tbody').html(
+            //         '<tr><td colspan="3" class="text-center py-4"><div class="spinner-border spinner-border-sm text-primary"></div></td></tr>'
+            //     );
+            //     $('#due-container').show();
+
+            //     $.get(`/payments/pending-dues/${customerId}`, function(dues) {
+            //         let rows = '';
+            //         if (dues.length === 0) {
+            //             rows =
+            //                 '<tr><td colspan="3" class="text-center py-5 text-muted">No pending dues found.</td></tr>';
+            //         } else {
+            //             dues.forEach(due => {
+            //                 let balance = (due.due_amount - (due.paid_amount || 0));
+            //                 let isOpening = due.id === 'opening';
+            //                 let inputName = isOpening ? `opening_balance_pay` :
+            //                     `amounts[${due.id}]`;
+
+            //                 rows += `
+        //             <tr class="${isOpening ? 'opening-row' : ''}">
+        //                 <td class="ps-4">
+        //                     <div class="fw-bold ${isOpening ? 'text-primary' : 'text-dark'}">
+        //                         ${isOpening ? '<i class="bi bi-info-circle me-1"></i>' : '#'} ${due.invoice_no}
+        //                     </div>
+        //                     <div class="text-muted extra-small">${new Date(due.created_at).toLocaleDateString()}</div>
+        //                 </td>
+        //                 <td><span class="badge ${isOpening ? 'bg-primary-subtle text-primary' : 'bg-danger-subtle text-danger'} px-2">${balance.toFixed(2)}</span></td>
+        //                 <td class="pe-4 text-end">
+        //                     <input type="number" name="${inputName}" 
+        //                         class="form-control form-control-sm pay-input ms-auto" 
+        //                         step="0.01" data-max="${balance}" placeholder="0.00">
+        //                 </td>
+        //             </tr>`;
+            //             });
+            //         }
+            //         $('#due-tbody').html(rows);
+            //         // Trigger auto-distribute if amount already exists
+            //         $('#auto_distribute_amount').trigger('input');
+            //     });
+            // });
+
+            // 2. Load Dues when Customer is selected
             $('#customer_id').change(function() {
                 let customerId = $(this).val();
                 if (!customerId) {
@@ -205,11 +270,21 @@
 
                 $.get(`/payments/pending-dues/${customerId}`, function(dues) {
                     let rows = '';
-                    if (dues.length === 0) {
+
+                    // Filter out opening balance rows if they are empty or fully paid
+                    let visibleDues = dues.filter(due => {
+                        let balance = (due.due_amount - (due.paid_amount || 0));
+                        if (due.id === 'opening' && balance <= 0) {
+                            return false; // Skip this item entirely
+                        }
+                        return true; // Keep everything else
+                    });
+
+                    if (visibleDues.length === 0) {
                         rows =
                             '<tr><td colspan="3" class="text-center py-5 text-muted">No pending dues found.</td></tr>';
                     } else {
-                        dues.forEach(due => {
+                        visibleDues.forEach(due => {
                             let balance = (due.due_amount - (due.paid_amount || 0));
                             let isOpening = due.id === 'opening';
                             let inputName = isOpening ? `opening_balance_pay` :

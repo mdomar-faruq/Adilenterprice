@@ -27,6 +27,7 @@ class SalesDueCustomer extends Model
         return $this->belongsTo(Employee::class, 'customer_id');
     }
 
+
     /**
      * Get the sale associated with this due record.
      */

@@ -79,8 +79,8 @@
                                     <tbody>
                                         <tr>
                                             <td>
-                                                <select name="product_id[]"
-                                                    class="form-select select2-products product-select" required>
+                                                <select name="product_id[]" class="form-select select2 product-select"
+                                                    required>
                                                     <option value="" data-price="0" data-stock="0">Select Product
                                                     </option>
                                                     @foreach ($products as $product)
@@ -314,7 +314,7 @@
             $('#add-item-row_02').click(function() {
                 let row = `<tr>
             <td class="ps-4">
-                <select name="items_02[${itemIndex}][product_id_02]" class="form-select select2-products product-select_02" required>
+                <select name="items_02[${itemIndex}][product_id_02]" class="form-select select2 product-select_02" required>
                     <option value=""></option>
                     @foreach ($products as $p) 
                         <option value="{{ $p->id }}" data-price="{{ $p->sale_price }}" data-stock="{{ $p->stock }}">
@@ -474,7 +474,7 @@
                 let discount = parseFloat($('#globalDiscount').val()) || 0;
                 let grandTotal = Math.max(0, subtotal - (discount + subtotalDamage_02));
                 let targetAmount = parseFloat($('#targetAmount').val()) || 0;
-                if(targetAmount > 0){
+                if (targetAmount > 0) {
                     extraDsr = grandTotal - targetAmount;
                 }
                 let paid = parseFloat($('#paidAmount').val()) || 0;

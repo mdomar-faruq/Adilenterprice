@@ -20,4 +20,21 @@ class Employee extends Model
         'address',
         'is_active'
     ];
+
+    /**
+     * Get all dues/invoices logged against the employee.
+     */
+    public function dues()
+    {
+        // Points to our newly linked balance sheet tracking model
+        return $this->hasMany(SalesDueCustomer::class, 'customer_id');
+    }
+
+    /**
+     * Get all financial payback ledger receipts from the employee.
+     */
+    public function payments()
+    {
+        return $this->hasMany(Payment::class, 'customer_id');
+    }
 }

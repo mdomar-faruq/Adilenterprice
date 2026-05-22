@@ -28,5 +28,8 @@ class ExpenseSeeder extends Seeder
         ExpenseCategories::create([
             'name' => 'Research & Development (R&D)',
         ]);
+        ExpenseCategories::create([
+            'name' => 'Advance Payment',
+        ]);
     }
 }

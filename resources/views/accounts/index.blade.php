@@ -47,7 +47,7 @@
                             </li>
                             <li class="list-group-item d-flex justify-content-between align-items-center border-0 px-0">
                                 <span>Sales Receive</span>
-                                <span class="fw-bold"> TK {{ number_format($sales, 2) }}</span>
+                                <span class="fw-bold"> TK {{ number_format($sales + $dsr_opening, 2) }}</span>
                             </li>
                             {{-- <li class="list-group-item d-flex justify-content-between align-items-center border-0 px-0">
                                 <span>Due Sales</span>

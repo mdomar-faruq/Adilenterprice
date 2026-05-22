@@ -24,7 +24,7 @@ class CompanyController extends Controller
                 ->addIndexColumn()
                 ->addColumn('ledger', function ($row) {
                     // This builds the button for the 'ledger' column in JS
-                    return '<a href="' . route('companies.ledger', $row->id) . '" class="btn btn-sm btn-outline-info rounded-pill px-3">
+                    return '<a href="' . route('reports.company_ledger', $row->id) . '" class="btn btn-sm btn-outline-info rounded-pill px-3">
                             <i class="bi bi-journal-text me-1"></i> Ledger
                         </a>';
                 })

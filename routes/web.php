@@ -43,9 +43,8 @@ Route::middleware(['auth'])->group(function () {
 
  //--------------------------Sales------------------------------------------------
  //DSR Ledger Report
- Route::get('/dsr/ledger', [SaleController::class, 'dsrLedger'])->name('dsr.ledger');
- Route::post('/dsr_opening/store', [SaleController::class, 'dsrOpeningStore'])->name('dsr_opening.store');
- Route::get('/dsr/{id}/ledger', [SaleController::class, 'DsrDetailsledger'])->name('dsr_details.ledger');
+ Route::get('/dsr_opening', [SaleController::class, 'dsrOpening'])->name('dsr.dsr_opening');
+ Route::post('/dsr_opening', [SaleController::class, 'dsrOpeningStore'])->name('dsr.opening_store');
 
  //customer not use 
  Route::get('/customers/{id}/ledger', [CustomerController::class, 'ledger'])->name('customers.ledger');
@@ -74,6 +73,13 @@ Route::middleware(['auth'])->group(function () {
  //--------------------------Report------------------------------------------------
  Route::prefix('report')->group(function () {
   Route::get('/product_stock', [ReportController::class, 'productStock'])->name('reports.product_stock');
+  Route::get('/all_dsr_due', [ReportController::class, 'allDsrDue'])->name('reports.all_dsr_due');
+  Route::get('/dsr_ledger', [ReportController::class, 'dsrLedger'])->name('reports.dsr_ledger');
+  Route::get('/expense', [ReportController::class, 'expense'])->name('reports.expense');
+  Route::get('/dsr_sales', [ReportController::class, 'dsrSales'])->name('reports.dsr_sales');
+  Route::get('/get_dsr_sales_details', [ReportController::class, 'getDsrSalesDetails'])->name('reports.get_dsr_sales_details');
+  Route::get('/company_ledger/{id}', [ReportController::class, 'companyLedger'])->name('reports.company_ledger');
+  Route::get('/company_summary', [ReportController::class, 'companySummary'])->name('reports.company_summary');
  });
 
 

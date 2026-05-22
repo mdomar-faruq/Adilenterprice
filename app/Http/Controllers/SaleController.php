@@ -504,10 +504,10 @@ class SaleController extends Controller
         }
     }
 
-    public function dsrLedger()
+    public function dsrOpening()
     {
         $employees = Employee::orderBy('name')->get();
-        return view('sales.dsr_select', compact('employees'));
+        return view('sales.dsr_opening', compact('employees'));
     }
     public function dsrOpeningStore(Request $request)
     {
@@ -520,52 +520,8 @@ class SaleController extends Controller
         $employee->update([
             'opening_balance' => $request->opening_balance
         ]);
-        return redirect()->route('dsr_details.ledger', $employee->id)
-            ->with('success', 'Opening balance updated successfully!');
-    }
 
-    public function DsrDetailsledger($id)
-    {
-        $customer = Employee::findOrFail($id);
-
-        // 1. Get Invoices (Debits)
-        $invoices = SalesDueCustomer::where('customer_id', $id)
-            ->with('sale')
-            ->get()
-            ->map(function ($item) {
-                return (object)[
-                    'date'      => $item->created_at,
-                    'type'      => 'Invoice',
-                    'reference' => '#' . $item->sale->invoice_no,
-                    'debit'     => $item->due_amount,
-                    'credit'    => 0,
-                ];
-            });
-
-        // 2. Get Payments (Credits)
-        $payments = Payment::where('customer_id', $id)
-            ->get()
-            ->map(function ($item) {
-                return (object)[
-                    'date'      => $item->payment_date,
-                    'type'      => 'Payment',
-                    'reference' => $item->payment_method . ($item->transaction_no ? ' - ' . $item->transaction_no : ''),
-                    'debit'     => 0,
-                    'credit'    => $item->amount,
-                ];
-            });
-
-        // 3. Merge, Sort, and Calculate Running Balance
-        $merged = $invoices->concat($payments)->sortBy('date');
-
-        $runningBalance = $customer->opening_balance;
-        $ledger = $merged->map(function ($row) use (&$runningBalance) {
-            $runningBalance += ($row->debit - $row->credit);
-            $row->balance = $runningBalance;
-            return $row;
-        });
-
-        return view('sales.ledger', compact('customer', 'ledger'));
+        return back()->with('success', 'Opening balance updated successfully!');
     }
 
     //
