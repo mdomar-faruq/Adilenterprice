@@ -10,13 +10,14 @@
                     <nav aria-label="breadcrumb">
                         <ol class="breadcrumb mb-0 align-items-center">
                             <li class="breadcrumb-item">
-                                <a href="/" class="text-decoration-none text-muted d-inline-flex align-items-center">
+                                <a href="/"
+                                    class="text-decoration-none text-body-secondary d-inline-flex align-items-center">
                                     <i class="bi bi-house-door me-2"></i><span>Home</span>
                                 </a>
                             </li>
                             <li class="breadcrumb-item">
                                 <a href="{{ route('purchase_payments.index') }}"
-                                    class="text-decoration-none text-muted">Purchase Payments</a>
+                                    class="text-decoration-none text-body-secondary">Purchase Payments</a>
                             </li>
                             <li class="breadcrumb-item active fw-semibold text-primary" aria-current="page">Create
                             </li>
@@ -37,9 +38,9 @@
 
         <div class="row">
             <div class="col-12">
-                <div class="card border-0 shadow-sm rounded-4">
-                    <div class="card-header bg-white rounded-top-4 py-3">
-                        <h5 class="mb-0"><i class="bi bi-bank me-2"></i>Company Purchase Payment</h5>
+                <div class="card border-0 shadow-sm rounded-4 payment-form-card">
+                    <div class="card-header rounded-top-4 py-3 border-0 payment-form-header">
+                        <h5 class="mb-0 fw-bold"><i class="bi bi-bank me-2"></i>Company Purchase Payment</h5>
                     </div>
                     <div class="card-body p-4">
                         <form id="purchasePaymentForm">
@@ -66,20 +67,20 @@
 
                             <div class="row mb-4">
                                 <div class="col-md-4 mb-3 mb-md-0">
-                                    <div class="p-3 border rounded-3 text-center bg-light" id="due_container">
-                                        <small class="text-muted d-block" id="due_label">Current Total Due</small>
+                                    <div class="p-3 border rounded-3 text-center bg-body-tertiary" id="due_container">
+                                        <small class="text-body-secondary d-block" id="due_label">Current Total Due</small>
                                         <span class="h5 fw-bold text-danger" id="due_display">TK 0.00</span>
                                     </div>
                                 </div>
                                 <div class="col-md-4 mb-3 mb-md-0">
-                                    <div class="p-3 border rounded-3 text-center bg-light">
-                                        <small class="text-muted d-block">Paying Now</small>
+                                    <div class="p-3 border rounded-3 text-center bg-body-tertiary">
+                                        <small class="text-body-secondary d-block">Paying Now</small>
                                         <span class="h5 fw-bold text-primary" id="paying_display">TK 0.00</span>
                                     </div>
                                 </div>
                                 <div class="col-md-4">
-                                    <div class="p-3 border rounded-3 text-center bg-light">
-                                        <small class="text-muted d-block">New Bal. After Payment</small>
+                                    <div class="p-3 border rounded-3 text-center bg-body-tertiary">
+                                        <small class="text-body-secondary d-block">New Bal. After Payment</small>
                                         <span class="h5 fw-bold text-secondary" id="remaining_display">TK 0.00</span>
                                     </div>
                                 </div>
@@ -125,6 +126,100 @@
             </div>
         </div>
     </div>
+@endsection
+
+@section('style')
+    <style>
+        .payment-form-card {
+            overflow: hidden;
+        }
+
+        .payment-form-header {
+            background: linear-gradient(135deg, rgba(var(--bs-primary-rgb), 0.14), rgba(var(--bs-info-rgb), 0.10));
+            color: var(--bs-body-emphasis);
+            border-bottom: 1px solid var(--bs-border-color);
+        }
+
+        .select2-container--bootstrap-5 .select2-selection--single {
+            min-height: 48px !important;
+            background-color: #ffffff !important;
+            color: #111111 !important;
+            border: 1px solid #ced4da !important;
+            border-radius: 0.8rem !important;
+            box-shadow: none !important;
+        }
+
+        .select2-container--bootstrap-5 .select2-selection__rendered {
+            color: #111111 !important;
+            line-height: 46px !important;
+            padding-left: 14px !important;
+            background: transparent !important;
+        }
+
+        .select2-container--bootstrap-5 .select2-selection__arrow {
+            height: 46px !important;
+        }
+
+        .select2-container--bootstrap-5 .select2-selection__arrow b {
+            border-color: #111111 transparent transparent transparent !important;
+        }
+
+        .select2-container--bootstrap-5.select2-container--focus .select2-selection--single {
+            border-color: #4e73df !important;
+            box-shadow: 0 0 0 0.25rem rgba(78, 115, 223, 0.18) !important;
+        }
+
+        .select2-container--bootstrap-5 .select2-dropdown,
+        .select2-container--bootstrap-5 .select2-results__options,
+        .select2-container--bootstrap-5 .select2-search__field {
+            background-color: #ffffff !important;
+            color: #111111 !important;
+        }
+
+        .select2-container--bootstrap-5 .select2-dropdown {
+            border: 1px solid #ced4da !important;
+            border-radius: 0.9rem !important;
+            box-shadow: 0 14px 32px rgba(0, 0, 0, 0.22);
+        }
+
+        .select2-container--bootstrap-5 .select2-results__option {
+            color: #111111 !important;
+            padding: 0.7rem 0.9rem !important;
+        }
+
+        .select2-container--bootstrap-5 .select2-results__option--selected,
+        .select2-container--bootstrap-5 .select2-results__option--highlighted {
+            background-color: #e9ecef !important;
+            color: #111111 !important;
+        }
+
+        .select2-container--bootstrap-5 .select2-search__field {
+            border: 1px solid #ced4da !important;
+            border-radius: 0.55rem !important;
+        }
+
+        [data-bs-theme="dark"] .select2-container--bootstrap-5 .select2-selection--single,
+        [data-bs-theme="dark"] .select2-container--bootstrap-5 .select2-dropdown,
+        [data-bs-theme="dark"] .select2-container--bootstrap-5 .select2-results__options,
+        [data-bs-theme="dark"] .select2-container--bootstrap-5 .select2-search__field {
+            background-color: #1f2328 !important;
+            color: #ffffff !important;
+            border-color: #495057 !important;
+        }
+
+        [data-bs-theme="dark"] .select2-container--bootstrap-5 .select2-selection__rendered,
+        [data-bs-theme="dark"] .select2-container--bootstrap-5 .select2-results__option,
+        [data-bs-theme="dark"] .select2-container--bootstrap-5 .select2-search__field,
+        [data-bs-theme="dark"] .select2-container--bootstrap-5 .select2-selection__arrow b {
+            color: #ffffff !important;
+        }
+
+        [data-bs-theme="dark"] .select2-container--bootstrap-5 .select2-results__option--selected,
+        [data-bs-theme="dark"] .select2-container--bootstrap-5 .select2-results__option--highlighted {
+            background-color: #2b3035 !important;
+            color: #ffffff !important;
+        }
+    </style>
 @endsection
 
 @push('scripts')
@@ -186,7 +281,7 @@
                 // UI adjustments for overpayment scenario values
                 if (standardCompanyDueBalance < 0) {
                     $('#due_label').text('Advance Credit Available');
-                    $('#due_container').removeClass('bg-light').addClass('bg-success-subtle');
+                    $('#due_container').removeClass('bg-body-tertiary').addClass('bg-success-subtle');
                     $('#due_display').removeClass('text-danger').addClass('text-success').text(
                         formatCurrency(Math.abs(standardCompanyDueBalance)));
 
@@ -195,7 +290,7 @@
                     updateVoucherDisplayBalances(0);
                 } else {
                     $('#due_label').text('Current Total Due');
-                    $('#due_container').removeClass('bg-success-subtle').addClass('bg-light');
+                    $('#due_container').removeClass('bg-success-subtle').addClass('bg-body-tertiary');
                     $('#due_display').removeClass('text-success').addClass('text-danger').text(
                         formatCurrency(standardCompanyDueBalance));
 

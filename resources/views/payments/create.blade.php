@@ -45,7 +45,7 @@
                     <div class="row g-4">
                         <!-- Left Column: Inputs and Tables -->
                         <div class="col-lg-8">
-                            <div class="card border-0 shadow-sm mb-4">
+                            <div class="card border-0 shadow-sm mb-4 payment-form-card">
                                 <div class="card-body p-4">
                                     <h6 class="fw-bold mb-3 text-uppercase small ls-1 text-primary">1.DSR Payment Collection
                                     </h6>
@@ -100,24 +100,26 @@
                                     <i class="bi bi-piggy-bank-fill fs-3 me-3"></i>
                                     <div>
                                         <h6 class="mb-0 fw-bold">Advance Payment Detected</h6>
-                                        <p class="small mb-2 text-dark">This amount exceeds total dues and will be saved to
+                                        <p class="small mb-2 text-body">This amount exceeds total dues and will be saved to
                                             the customer's wallet.</p>
                                         <input type="number" name="advance_amount" id="advance_amount"
-                                            class="form-control form-control-sm w-50 bg-white fw-bold text-success"
+                                            class="form-control form-control-sm w-50 payment-advance-input fw-bold text-success"
                                             readonly>
                                     </div>
                                 </div>
                             </div>
 
                             <!-- Invoices Table -->
-                            <div class="card border-0 shadow-sm overflow-hidden" id="due-container" style="display:none;">
-                                <div class="card-header bg-white py-3 border-0">
-                                    <h6 class="fw-bold mb-0 text-dark"><i class="bi bi-list-check me-2"></i>Outstanding
+                            <div class="card border-0 shadow-sm overflow-hidden payment-table-card" id="due-container"
+                                style="display:none;">
+                                <div class="card-header payment-card-header py-3 border-0">
+                                    <h6 class="fw-bold mb-0 text-body-emphasis"><i
+                                            class="bi bi-list-check me-2"></i>Outstanding
                                         Invoices & Opening Balance</h6>
                                 </div>
                                 <div class="table-responsive">
-                                    <table class="table table-hover align-middle mb-0" id="due-table">
-                                        <thead class="bg-light text-muted small text-uppercase">
+                                    <table class="table table-hover align-middle mb-0 payment-table" id="due-table">
+                                        <thead class="payment-table-header small text-uppercase">
                                             <tr>
                                                 <th class="ps-4">Reference</th>
                                                 <th>Remaining</th>
@@ -134,20 +136,21 @@
 
                         <!-- Right Column: Summary Card -->
                         <div class="col-lg-4">
-                            <div class="card border-1 shadow-sm" style="top: 20px;">
+                            <div class="card border shadow-sm payment-summary-card" style="top: 20px;">
                                 <div class="card-body p-4 text-center">
                                     <div class="mb-4">
-                                        <div class="display-6 fw-bold text-dark" id="display_total_collection">0.00</div>
-                                        <p class="text-muted text-uppercase small ls-1">Total Collection</p>
+                                        <div class="display-6 fw-bold text-body-emphasis" id="display_total_collection">0.00
+                                        </div>
+                                        <p class="text-body-secondary text-uppercase small ls-1">Total Collection</p>
                                     </div>
 
-                                    <div class="bg-light rounded p-3 mb-4">
+                                    <div class="payment-summary-box rounded p-3 mb-4">
                                         <div class="d-flex justify-content-between mb-2">
-                                            <span class="text-muted small">Invoice Count</span>
+                                            <span class="text-body-secondary small">Invoice Count</span>
                                             <span class="fw-bold small" id="count_selected">0</span>
                                         </div>
                                         <div class="d-flex justify-content-between">
-                                            <span class="text-muted small">Post-Payment Due</span>
+                                            <span class="text-body-secondary small">Post-Payment Due</span>
                                             <span class="fw-bold small text-danger"
                                                 id="display_remaining_balance">0.00</span>
                                         </div>
@@ -155,7 +158,7 @@
 
                                     <div class="mb-3 text-start">
                                         <label class="form-label small fw-bold">General Note</label>
-                                        <textarea name="note" class="form-control" rows="3" placeholder="Add payment memo..."></textarea>
+                                        <textarea name="note" class="form-control payment-note" rows="3" placeholder="Add payment memo..."></textarea>
                                     </div>
 
                                     <button type="submit" class="btn btn-primary btn-lg w-100 shadow-sm fw-bold py-3">
@@ -163,7 +166,7 @@
                                     </button>
 
                                     <button type="reset"
-                                        class="btn btn-link btn-sm text-decoration-none mt-3 text-muted"
+                                        class="btn btn-link btn-sm text-decoration-none mt-3 text-body-secondary"
                                         onclick="location.reload()">Reset Form</button>
                                 </div>
                             </div>
@@ -179,19 +182,78 @@
             letter-spacing: 1px;
         }
 
+        .payment-form-card,
+        .payment-summary-card,
+        .payment-table-card,
+        .payment-card-header,
+        .payment-summary-box,
+        .payment-table-header {
+            background-color: var(--bs-body-bg);
+            color: var(--bs-body-color);
+        }
+
+        .payment-card-header {
+            border-bottom: 1px solid var(--bs-border-color) !important;
+        }
+
+        .payment-summary-box {
+            border: 1px solid var(--bs-border-color);
+        }
+
+        .payment-note,
+        .payment-advance-input,
+        .pay-input,
+        .form-select,
+        .form-control,
+        .input-group-text {
+            background-color: var(--bs-body-bg) !important;
+            color: var(--bs-body-color) !important;
+            border-color: var(--bs-border-color) !important;
+        }
+
+        .payment-note:focus,
+        .payment-advance-input:focus,
+        .pay-input:focus,
+        .form-select:focus,
+        .form-control:focus {
+            border-color: var(--bs-primary) !important;
+            box-shadow: 0 0 0 0.15rem rgba(var(--bs-primary-rgb), 0.18) !important;
+            background-color: var(--bs-body-bg) !important;
+            color: var(--bs-body-color) !important;
+        }
+
         .pay-input {
             text-align: right;
             font-weight: bold;
-            color: #0d6efd;
-            border-color: #dee2e6;
-        }
-
-        .pay-input:focus {
-            background-color: #f8f9ff;
+            color: var(--bs-primary) !important;
         }
 
         .opening-row {
-            background-color: #f0f7ff;
+            background-color: var(--bs-tertiary-bg);
+        }
+
+        .select2-container--bootstrap-5 .select2-selection--single,
+        .select2-container--bootstrap-5 .select2-selection--single .select2-selection__rendered,
+        .select2-dropdown,
+        .select2-container--bootstrap-5 .select2-results__option {
+            background-color: var(--bs-body-bg) !important;
+            color: var(--bs-body-color) !important;
+            border-color: var(--bs-border-color) !important;
+        }
+
+        .select2-container--bootstrap-5 .select2-selection--single {
+            border: 1px solid var(--bs-border-color) !important;
+        }
+
+        .select2-container--bootstrap-5 .select2-results__option--highlighted[aria-selected],
+        .select2-container--bootstrap-5 .select2-results__option--selected {
+            background-color: var(--bs-tertiary-bg) !important;
+            color: var(--bs-body-color) !important;
+        }
+
+        .select2-container--bootstrap-5 .select2-results__option--selected {
+            background-color: var(--bs-primary) !important;
+            color: #fff !important;
         }
     </style>
 @endsection

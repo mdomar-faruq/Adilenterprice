@@ -1,10 +1,16 @@
 <!DOCTYPE html>
-<html lang="en" data-bs-theme="light">
+<html lang="en">
 
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="csrf-token" content="{{ csrf_token() }}">
+    <script>
+        (function() {
+            const savedTheme = localStorage.getItem('theme') || 'light';
+            document.documentElement.setAttribute('data-bs-theme', savedTheme);
+        })();
+    </script>
     <title>AdilEnterprice</title>
     <link href="{{ asset('css/bootstrap_5_3.css') }}" rel="stylesheet">
     <link href="{{ asset('css/bootstrap_icon_5_3.css') }}" rel="stylesheet">
@@ -57,16 +63,13 @@
             background: rgba(255, 255, 255, 0.1);
         }
 
-
-
-        <style>.page-header {
-            background: #ffffff;
+        .page-header {
+            background: var(--bs-body-bg);
             padding: 1.5rem 0;
         }
 
         .breadcrumb-item+.breadcrumb-item::before {
             content: "›";
-            /* Sleeker separator */
             font-size: 1.2rem;
             line-height: 1;
             vertical-align: middle;
@@ -85,7 +88,7 @@
         }
 
         .text-muted-custom {
-            color: #858796;
+            color: var(--bs-secondary-color);
             font-size: 0.875rem;
             letter-spacing: 0.5px;
         }
@@ -205,6 +208,18 @@
                             <li><a class="dropdown-item" href="/employees">Employees</a></li>
                         </ul>
                     </li>
+                    <li class="nav-item dropdown">
+                        <a class="nav-link dropdown-toggle" href="#" data-bs-toggle="dropdown">
+                            <i class="bi bi-download me-1"></i> Export
+                        </a>
+                        <ul class="dropdown-menu border-0 shadow-sm">
+                            <li>
+                                <a href="{{ route('export.database') }}" class="dropdown-item export-confirm-link">
+                                    <i class="bi bi-database-down me-1"></i> Export Full Database
+                                </a>
+                            </li>
+                        </ul>
+                    </li>
                     {{-- <li class="nav-item dropdown">
                         <a class="nav-link dropdown-toggle" href="#" data-bs-toggle="dropdown">
                             <!-- Settings icon with text -->
@@ -256,27 +271,58 @@
         const themeIcon = document.getElementById('themeIcon');
         const htmlElement = document.documentElement;
 
-        // Check for saved theme in localStorage
+        function updateIcon(theme) {
+            if (!themeIcon) {
+                return;
+            }
+
+            if (theme === 'dark') {
+                themeIcon.classList.remove('bi-moon-stars');
+                themeIcon.classList.add('bi-sun');
+            } else {
+                themeIcon.classList.remove('bi-sun');
+                themeIcon.classList.add('bi-moon-stars');
+            }
+        }
+
         const savedTheme = localStorage.getItem('theme') || 'light';
         htmlElement.setAttribute('data-bs-theme', savedTheme);
         updateIcon(savedTheme);
 
-        themeToggle.addEventListener('click', () => {
-            const currentTheme = htmlElement.getAttribute('data-bs-theme');
-            const newTheme = currentTheme === 'light' ? 'dark' : 'light';
+        if (themeToggle) {
+            themeToggle.addEventListener('click', () => {
+                const currentTheme = htmlElement.getAttribute('data-bs-theme');
+                const newTheme = currentTheme === 'light' ? 'dark' : 'light';
 
-            htmlElement.setAttribute('data-bs-theme', newTheme);
-            localStorage.setItem('theme', newTheme);
-            updateIcon(newTheme);
-        });
-
-        function updateIcon(theme) {
-            if (theme === 'dark') {
-                themeIcon.classList.replace('bi-moon-stars', 'bi-sun');
-            } else {
-                themeIcon.classList.replace('bi-sun', 'bi-moon-stars');
-            }
+                htmlElement.setAttribute('data-bs-theme', newTheme);
+                localStorage.setItem('theme', newTheme);
+                updateIcon(newTheme);
+            });
         }
+
+        document.addEventListener('click', function(event) {
+            const exportLink = event.target.closest('.export-confirm-link');
+            if (!exportLink) {
+                return;
+            }
+
+            event.preventDefault();
+
+            Swal.fire({
+                icon: 'warning',
+                title: 'Confirm Export',
+                text: 'Are you sure you want to export the full database?',
+                showCancelButton: true,
+                confirmButtonColor: '#0d6efd',
+                cancelButtonColor: '#6c757d',
+                confirmButtonText: 'Yes, Export',
+                cancelButtonText: 'Cancel'
+            }).then((result) => {
+                if (result.isConfirmed) {
+                    window.location.href = exportLink.href;
+                }
+            });
+        });
     </script>
 
 

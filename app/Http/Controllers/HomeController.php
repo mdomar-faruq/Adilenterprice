@@ -12,7 +12,7 @@ use App\Models\Product;
 use App\Models\PurchasePayment;
 use Illuminate\Http\Request;
 use Carbon\Carbon;
-use DB;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 
 class HomeController extends Controller
@@ -180,5 +180,89 @@ class HomeController extends Controller
         }
 
         return response()->json(['cards' => $cards, 'chart' => ['labels' => $labels, 'sales' => $salesData, 'expenses' => $expenseData]]);
+    }
+
+    public function exportDatabase()
+    {
+        $connection = DB::connection();
+        $pdo = $connection->getPdo();
+        $driver = $connection->getDriverName();
+        $databaseName = $connection->getDatabaseName();
+
+        $export = "-- Adil Enterprise Full Database Export\n";
+        $export .= "-- Generated: " . now()->format('Y-m-d H:i:s') . "\n\n";
+
+        if ($driver === 'sqlite') {
+            $tables = $connection->select("SELECT name FROM sqlite_master WHERE type = 'table' AND name NOT LIKE 'sqlite_%' ORDER BY name");
+            foreach ($tables as $table) {
+                $tableName = $table->name;
+                $createTableSql = $connection->selectOne("SELECT sql FROM sqlite_master WHERE type = 'table' AND name = ?", [$tableName]);
+                $export .= "\n-- TABLE: {$tableName}\n";
+                $export .= ($createTableSql?->sql ?? '') . ";\n";
+
+                $rows = $connection->table($tableName)->get();
+                foreach ($rows as $row) {
+                    $columns = collect((array) $row)->keys()->all();
+                    $values = [];
+                    foreach ($columns as $column) {
+                        $value = $row->{$column};
+                        if ($value === null) {
+                            $values[] = 'NULL';
+                        } else {
+                            $values[] = $pdo->quote((string) $value);
+                        }
+                    }
+                    $export .= "INSERT INTO `{$tableName}` (`" . implode('`, `', $columns) . "`) VALUES (" . implode(', ', $values) . ");\n";
+                }
+            }
+        } else {
+            $tables = $connection->select("SELECT TABLE_NAME FROM information_schema.TABLES WHERE TABLE_SCHEMA = ? ORDER BY TABLE_NAME", [$databaseName]);
+            $export .= "SET FOREIGN_KEY_CHECKS = 0;\n\n";
+
+            foreach ($tables as $table) {
+                $tableName = $table->TABLE_NAME;
+
+                $createStatement = $connection->selectOne("SHOW CREATE TABLE `{$tableName}`");
+                $createSql = $createStatement->{'Create Table'} ?? $createStatement->{'Create View'} ?? null;
+
+                if (!$createSql) {
+                    continue;
+                }
+
+                $export .= "\n-- TABLE: {$tableName}\n";
+                $export .= $createSql . ";\n";
+
+                $columns = $connection->select("SHOW COLUMNS FROM `{$tableName}`");
+                $columnNames = array_map(function ($column) {
+                    return $column->Field;
+                }, $columns);
+
+                $rows = $connection->table($tableName)->get();
+                foreach ($rows as $row) {
+                    $values = [];
+                    foreach ($columnNames as $columnName) {
+                        $value = $row->{$columnName};
+                        if ($value === null) {
+                            $values[] = 'NULL';
+                        } else {
+                            $values[] = $pdo->quote((string) $value);
+                        }
+                    }
+
+                    $export .= "INSERT INTO `{$tableName}` (`" . implode('`, `', $columnNames) . "`) VALUES (" . implode(', ', $values) . ");\n";
+                }
+            }
+
+            $export .= "\nSET FOREIGN_KEY_CHECKS = 1;\n";
+        }
+
+        $filename = 'adil_enterprise_full_database_' . now()->format('Ymd_His') . '.sql';
+
+        return response()->streamDownload(function () use ($export) {
+            echo $export;
+        }, $filename, [
+            'Content-Type' => 'application/sql',
+            'Content-Disposition' => 'attachment; filename="' . $filename . '"',
+        ]);
     }
 }

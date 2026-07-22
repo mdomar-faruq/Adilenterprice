@@ -1,5 +1,6 @@
 <?php
 
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\HomeController;
 use App\Http\Controllers\ProductController;
@@ -24,6 +25,7 @@ Route::middleware(['auth'])->group(function () {
  Route::get('/v1/dashboard', [HomeController::class, 'dashboardOne']);
  Route::get('/v1/dashboard/data', [HomeController::class, 'dashboardOneData'])->name('dashboardOne.data');
  Route::get('/dashboard/data/{period}', [HomeController::class, 'getDashboardData']);
+ Route::get('/export/database', [HomeController::class, 'exportDatabase'])->name('export.database');
 
  //--------------------------Inventory------------------------------------------------
 
