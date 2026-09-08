@@ -18,8 +18,11 @@ return new class extends Migration
             $table->foreignId('delivery_id')->constrained('employees');
             $table->foreignId('sr_id')->constrained('employees');
             $table->string('route_no');
+            $table->decimal('total_damage', 15, 2)->default(0);
             $table->decimal('discount', 15, 2)->default(0);
             $table->decimal('total_amount', 15, 2)->default(0);
+            $table->decimal('extra_amount', 15, 2)->default(0);
+            $table->decimal('target_amount', 15, 2)->default(0);
             $table->decimal('paid_amount', 15, 2)->default(0);
             $table->decimal('due_amount', 15, 2)->default(0);
             $table->string('payment_status')->default('pending'); // pending, partial, paid
@@ -34,6 +37,12 @@ return new class extends Migration
      */
     public function down(): void
     {
+        // Disable foreign key checks before dropping
+        Schema::disableForeignKeyConstraints();
+
         Schema::dropIfExists('sales');
+
+        // Re-enable foreign key checks after dropping
+        Schema::enableForeignKeyConstraints();
     }
 };

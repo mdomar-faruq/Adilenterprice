@@ -20,6 +20,7 @@ return new class extends Migration
             $table->date('payment_date');
             $table->string('payment_method'); // Cash, Bank, Check
             $table->string('note')->nullable();
+            $table->longText('log_details')->nullable();
             $table->foreignId('user_id')->constrained(); // Who paid
             $table->timestamps();
         });

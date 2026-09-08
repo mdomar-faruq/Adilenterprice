@@ -19,6 +19,7 @@ return new class extends Migration
             $table->decimal('sale_price', 15, 2)->default(0);
             $table->decimal('opening_stock', 15, 2)->default(0);
             $table->decimal('stock', 15, 2)->default(0);
+            $table->decimal('damage_stock')->default(0);
             $table->foreignId('company_id')->constrained('companies')->onDelete('cascade');
             $table->foreignId('unit_id')->constrained('units')->onDelete('cascade');
             $table->foreignId('user_id')->constrained('users')->onDelete('cascade');
